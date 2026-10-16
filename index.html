@@ -149,6 +149,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div id="verrou-ecran" style="display:flex;">
@@ -158,13 +159,18 @@
     <p style="opacity:.85;font-size:.9rem;">Laboratoire interactif des nombres complexes</p>
     <div style="background:rgba(255,255,255,.08);padding:14px;border-radius:12px;margin:18px 0;text-align:left;">
       <p style="margin:0 0 8px;font-size:.85rem;color:#fbbf24;font-weight:800;">ACCÈS PAYANT — ACTIVATION OBLIGATOIRE</p>
-      <p style="margin:0;font-size:.8rem;line-height:1.5;">1. Inscrivez votre nom et votre numéro. 2. Envoyez votre ID appareil au développeur pour les modalités de paiement et le code d’activation. 3. L’accès est ouvert uniquement après validation du paiement.</p>
+      <p style="margin:0;font-size:.8rem;line-height:1.5;">1. Créez un compte avec votre e-mail et un mot de passe. 2. Enregistrez votre nom et votre numéro. 3. Envoyez votre ID appareil au développeur. L’accès reste fermé jusqu’à validation du paiement.</p>
     </div>
-    <label for="labo-nom" style="display:block;text-align:left;font-size:.82rem;margin:10px 0 5px;">Nom complet</label>
+    <label for="labo-email" style="display:block;text-align:left;font-size:.82rem;margin:10px 0 5px;">Adresse e-mail du compte</label>
+    <input id="labo-email" type="email" autocomplete="email" style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:10px;" placeholder="vous@exemple.com">
+    <label for="labo-password" style="display:block;text-align:left;font-size:.82rem;margin:4px 0 5px;">Mot de passe (6 caractères minimum)</label>
+    <input id="labo-password" type="password" autocomplete="new-password" style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:10px;" placeholder="Choisissez un mot de passe">
+    <label for="labo-nom" style="display:block;text-align:left;font-size:.82rem;margin:4px 0 5px;">Nom complet</label>
     <input id="labo-nom" type="text" autocomplete="name" style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:10px;" placeholder="Votre nom complet">
     <label for="labo-tel" style="display:block;text-align:left;font-size:.82rem;margin:4px 0 5px;">Téléphone (Sénégal)</label>
     <input id="labo-tel" type="tel" autocomplete="tel" inputmode="tel" style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:10px;" placeholder="Ex. 760153389">
-    <button id="labo-inscrire" onclick="inscrireLabo()" style="width:100%;padding:13px;background:var(--primary);color:white;border:0;border-radius:10px;font-weight:800;cursor:pointer;margin-bottom:16px;">ENREGISTRER MON PROFIL</button>
+    <button id="labo-inscrire" onclick="creerCompteEtInscrireLabo()" style="width:100%;padding:13px;background:var(--primary);color:white;border:0;border-radius:10px;font-weight:800;cursor:pointer;margin-bottom:8px;">CRÉER MON COMPTE ET MON PROFIL</button>
+    <button id="labo-connecter" onclick="connecterCompteLabo()" style="width:100%;padding:12px;background:#444;color:white;border:1px solid #777;border-radius:10px;font-weight:700;cursor:pointer;margin-bottom:16px;">J’AI DÉJÀ UN COMPTE : ME CONNECTER</button>
     <div style="background:rgba(255,255,255,.08);padding:12px;border-radius:12px;margin:8px 0 12px;">
       <p style="margin:0 0 5px;font-size:.78rem;">IDENTIFIANT DE CET APPAREIL</p>
       <span id="code-client" style="color:#fbbf24;font-weight:800;font-size:1.15rem;overflow-wrap:anywhere;">Génération…</span>
@@ -298,13 +304,44 @@
 
 <script>
 // --- SÉCURITÉ LABO MAÎTRE : accès payant, profil et vérification Firebase ---
-const LABO_DB_URL = "https://maths5eme-v1-default-rtdb.europe-west1.firebasedatabase.app";
+/* RÈGLES RTDB À CONFIGURER DANS LA CONSOLE (ne pas laisser les règles globales ouvertes):
+{
+  "rules": {
+    "labo_maitre_clients": {
+      "$tel": {
+        "infos_client": {
+          ".read": "auth != null && data.child('uid').val() === auth.uid",
+          ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && newData.child('tel').val() === $tel && newData.child('application').val() === 'labo_maitre' && newData.child('statut_paiement').val() === 'EN_ATTENTE') || (data.exists() && data.child('uid').val() === auth.uid && newData.child('uid').val() === auth.uid && newData.child('statut_paiement').val() === data.child('statut_paiement').val()))"
+        }
+      }
+    }
+  }
+}
+Ces règles sont un point de départ à vérifier avec le code avant publication. Le statut de paiement est initialisé à EN_ATTENTE et les utilisateurs ne peuvent pas le changer via le client. L'administrateur peut confirmer le paiement dans la console Firebase, qui passe outre les règles client.
+*/
+
+// Configuration complète du projet Firebase dédié à LABO MAÎTRE.
+const firebaseConfigLabo = {
+  apiKey: "AIzaSyAiFiF27WKa8QNXq_Q5NyWoiYe62-Fyico",
+  authDomain: "labo-maitre-nombres-complexes.firebaseapp.com",
+  databaseURL: "https://labo-maitre-nombres-complexes-default-rtdb.firebaseio.com",
+  projectId: "labo-maitre-nombres-complexes",
+  storageBucket: "labo-maitre-nombres-complexes.firebasestorage.app",
+  messagingSenderId: "838860992472",
+  appId: "1:838860992472:web:cd63dcb960cfb01e088cad",
+  measurementId: "G-S4W4VPPCGK"
+};
+const LABO_DB_URL = firebaseConfigLabo.databaseURL;
 const LABO_APP_KEY = "labo_maitre";
-const LABO_SECRET_KEY = 7391; // même logique de génération PIN que MATHS 5ème
+const LABO_SECRET_KEY = 7391; // compatibilité avec le générateur existant; ne constitue pas une sécurité serveur
 let laboDatabase = null;
+let laboAuth = null;
 try {
-  if (window.firebase && !firebase.apps.length) firebase.initializeApp({ databaseURL: LABO_DB_URL });
-  if (window.firebase) laboDatabase = firebase.database();
+  if (window.firebase && !firebase.apps.length) firebase.initializeApp(firebaseConfigLabo);
+  if (window.firebase) {
+    laboDatabase = firebase.database();
+    laboAuth = firebase.auth();
+  }
 } catch (e) { console.error('Initialisation Firebase impossible', e); }
 
 function getDeviceIdLabo() {
@@ -332,52 +369,89 @@ function copierIdLabo() {
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(id).then(()=>laboStatus('ID appareil copié. Envoyez-le au développeur.')).catch(()=>laboStatus('Votre ID appareil : ' + id));
   else laboStatus('Votre ID appareil : ' + id);
 }
-async function inscrireLabo() {
+function lireChampsCompteLabo() {
+  const email = (document.getElementById('labo-email')?.value || '').trim().toLowerCase();
+  const password = document.getElementById('labo-password')?.value || '';
   const nom = (document.getElementById('labo-nom')?.value || '').trim();
   const tel = (document.getElementById('labo-tel')?.value || '').replace(/\D/g, '');
-  if (!nom || tel.length < 8) return laboStatus('Veuillez saisir votre nom et un numéro de téléphone valide.', true);
-  if (!laboDatabase) return laboStatus('Connexion Firebase indisponible. Vérifiez Internet puis réessayez.', true);
+  if (!email || !email.includes('@')) throw new Error('Saisissez une adresse e-mail valide.');
+  if (password.length < 6) throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
+  if (!nom || tel.length < 8) throw new Error('Saisissez votre nom et un numéro de téléphone valide.');
+  if (!laboAuth || !laboDatabase) throw new Error('Firebase indisponible. Vérifiez votre connexion Internet.');
+  return {email, password, nom, tel};
+}
+async function enregistrerProfilLabo(user, nom, tel) {
+  if (!user || !user.uid) throw new Error('Authentification Firebase requise.');
+  const ref = laboRef(tel);
+  const snap = await ref.once('value');
+  if (snap.exists()) {
+    const data = snap.val() || {};
+    if (data.uid !== user.uid) throw new Error('Ce numéro est déjà associé à un autre compte. Contactez le développeur.');
+    if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu') throw new Error('Accès suspendu. Contactez le développeur.');
+    localStorage.setItem('labo_maitre_tel', tel);
+    laboStatus(data.statut_paiement === 'VALIDE' ? 'Profil retrouvé. Saisissez votre code PIN pour vérifier votre licence.' : 'Compte connecté. Le paiement reste en attente de validation par le développeur.');
+    return;
+  }
+  const now = new Date().toISOString();
+  await ref.set({
+    uid: user.uid, nom, tel, email: user.email || '', application: LABO_APP_KEY,
+    device_id: getDeviceIdLabo(), etat_acces: 'actif', statut: 'actif', acces: 'actif',
+    statut_paiement: 'EN_ATTENTE', date_inscription: now,
+    dernier_token: 'init_' + Math.random().toString(36).slice(2, 11)
+  });
+  localStorage.setItem('labo_maitre_tel', tel);
+  laboStatus('Profil enregistré. Paiement en attente : envoyez votre ID appareil au développeur après paiement.');
+}
+async function creerCompteEtInscrireLabo() {
   const btn = document.getElementById('labo-inscrire'); if (btn) btn.disabled = true;
   try {
-    const ref = laboRef(tel);
-    const snap = await ref.once('value');
-    if (snap.exists()) {
-      const data = snap.val() || {};
-      if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu') {
-        laboStatus('Accès suspendu. Contactez le développeur.', true); return;
-      }
-      localStorage.setItem('labo_maitre_tel', tel);
-      document.getElementById('labo-nom').value = data.nom || nom;
-      document.getElementById('labo-tel').value = tel;
-      laboStatus(data.statut_paiement === 'VALIDE' ? 'Profil retrouvé. Saisissez votre code PIN pour vérifier votre licence.' : 'Profil déjà enregistré. Le paiement doit être validé par le développeur avant l’activation.');
-      return;
-    }
-    const now = new Date().toISOString();
-    await ref.set({
-      nom, tel, application: LABO_APP_KEY, device_id: getDeviceIdLabo(),
-      etat_acces: 'actif', statut: 'actif', acces: 'actif',
-      statut_paiement: 'EN_ATTENTE', date_inscription: now,
-      dernier_token: 'init_' + Math.random().toString(36).slice(2, 11)
-    });
-    localStorage.setItem('labo_maitre_tel', tel);
-    laboStatus('Profil enregistré. Le paiement n’est PAS encore validé : l’application reste verrouillée. Envoyez votre ID appareil au développeur et attendez la confirmation.');
+    const {email, password, nom, tel} = lireChampsCompteLabo();
+    const credential = await laboAuth.createUserWithEmailAndPassword(email, password);
+    await enregistrerProfilLabo(credential.user, nom, tel);
   } catch (e) {
-    console.error('Inscription LABO MAÎTRE', e);
-    laboStatus('Impossible d’enregistrer le profil. Vérifiez les règles Firebase et la connexion.', true);
+    console.error('Création de compte LABO MAÎTRE', e);
+    const messages = {
+      'auth/email-already-in-use': 'Cette adresse e-mail possède déjà un compte. Utilisez « Me connecter ».',
+      'auth/invalid-email': 'Adresse e-mail invalide.',
+      'auth/weak-password': 'Mot de passe trop faible : utilisez au moins 6 caractères.',
+      'auth/operation-not-allowed': 'La méthode e-mail/mot de passe doit être activée dans Firebase Authentication.',
+      'auth/network-request-failed': 'Connexion Internet indisponible. Réessayez.'
+    };
+    laboStatus(messages[e.code] || e.message || 'Impossible de créer le compte et le profil.', true);
   } finally { if (btn) btn.disabled = false; }
 }
+async function connecterCompteLabo() {
+  const btn = document.getElementById('labo-connecter'); if (btn) btn.disabled = true;
+  try {
+    const {email, password, nom, tel} = lireChampsCompteLabo();
+    const credential = await laboAuth.signInWithEmailAndPassword(email, password);
+    await enregistrerProfilLabo(credential.user, nom, tel);
+  } catch (e) {
+    console.error('Connexion LABO MAÎTRE', e);
+    const messages = {
+      'auth/invalid-credential': 'E-mail ou mot de passe incorrect.',
+      'auth/user-not-found': 'Aucun compte trouvé. Créez d’abord un compte.',
+      'auth/wrong-password': 'Mot de passe incorrect.',
+      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
+      'auth/network-request-failed': 'Connexion Internet indisponible. Réessayez.'
+    };
+    laboStatus(messages[e.code] || e.message || 'Connexion impossible.', true);
+  } finally { if (btn) btn.disabled = false; }
+}
+async function inscrireLabo() { return creerCompteEtInscrireLabo(); }
 async function tenterActivation() {
   const input = document.getElementById('pass-input');
   const pin = (input?.value || '').trim();
   const tel = (localStorage.getItem('labo_maitre_tel') || (document.getElementById('labo-tel')?.value || '').replace(/\D/g, '')).trim();
   if (!tel) return laboStatus('Enregistrez d’abord votre profil avec votre numéro de téléphone.', true);
   if (!pin) return laboStatus('Saisissez le code PIN reçu.', true);
-  if (!laboDatabase) return laboStatus('Impossible de vérifier le paiement : Firebase est indisponible. Accès refusé par sécurité.', true);
+  if (!laboDatabase || !laboAuth || !laboAuth.currentUser) return laboStatus('Connectez-vous avec votre compte e-mail avant de vérifier la licence.', true);
   laboStatus('Vérification du paiement et de la licence…');
   try {
     const snap = await laboRef(tel).once('value');
     if (!snap.exists()) return laboStatus('Profil introuvable. Enregistrez d’abord votre profil.', true);
     const data = snap.val() || {};
+    if (data.uid !== laboAuth.currentUser.uid) return laboStatus('Ce profil n’appartient pas au compte connecté.', true);
     if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu' || data.acces === 'suspendu') {
       localStorage.removeItem('geoActive_V31');
       return laboStatus('Accès suspendu ou banni par l’administration.', true);
@@ -417,6 +491,7 @@ async function verifierLicenceLaboAuDemarrage() {
   if (verrou) verrou.style.display = 'flex';
   if (app) app.style.display = 'none';
   if (!tel || localStorage.getItem('geoActive_V31') !== 'true') return;
+  if (!laboAuth || !laboAuth.currentUser) { localStorage.removeItem('geoActive_V31'); localStorage.removeItem('labo_maitre_session_token'); return laboStatus('Reconnectez-vous avec votre compte e-mail pour vérifier votre licence.', true); }
   if (!laboDatabase) { localStorage.removeItem('geoActive_V31'); return laboStatus('Connexion serveur requise pour vérifier la licence.', true); }
   try {
     const snap = await laboRef(tel).once('value');
