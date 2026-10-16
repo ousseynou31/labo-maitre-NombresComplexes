@@ -1,0 +1,2647 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LABO MAÎTRE V31 - Solveur & Racines</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #6c5ce7; --dark: #2d3436; --light: #f8f9fa; --accent: #e67e22; --success: #2ecc71; --danger: #d63031; }
+        * { box-sizing: border-box; touch-action: manipulation; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Poppins', sans-serif; overflow: hidden; }
+        #verrou-ecran { 
+           position: fixed; 
+           inset: 0; 
+           background: #1a1a1a; 
+         z-index: 10000; 
+         display: flex; 
+         align-items: center; 
+         justify-content: center; 
+         color: white; 
+          }
+        .boite-auth { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); width: 85%; max-width: 380px; text-align: center; }
+        #app-interface { 
+          display: none; /* Caché au départ */
+          flex-direction: column; 
+          height: 100vh; 
+          }
+        .top-bar, .bottom-bar { background: white; padding: 5px; display: flex; justify-content: center; gap: 4px; border: 1px solid #ddd; flex-wrap: wrap; z-index: 100; }
+        .top-bar { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+        .top-bar .tool-btn { flex: 0 0 auto; min-height: 38px; padding: 4px 7px; font-size: 0.66rem; }
+        .top-bar .tool-btn input[type="color"] { width: 24px; height: 24px; padding: 0; vertical-align: middle; }
+        @media (max-width: 1200px) { .top-bar .tool-btn { font-size: 0.61rem; padding: 4px 6px; } }
+
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .side-bar { width: 340px; background: #f0f0f0; border-right: 2px solid #ddd; padding: 10px; overflow-y: auto; }
+        .workspace { flex-grow: 1; position: relative; background: white; cursor: crosshair; }
+        .tool-btn, .btn-action { min-height: 40px; padding: 5px 10px; border-radius: 8px; border: 1px solid #ccc; background: white; font-weight: 700; cursor: pointer; font-size: 0.7rem; }
+        .active-mode { background: var(--primary) !important; color: white !important; border: 2px solid black; }
+        .panel-box { background: #dfe6e9; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 2px solid var(--primary); display: none; }
+        .solver-grid { display: grid; grid-template-columns: 30px 1fr 1fr; gap: 5px; background: white; padding: 8px; border-radius: 8px; margin-top: 5px; align-items: center; }
+        .solver-grid input { width: 100%; padding: 3px; font-size: 0.75rem; border: 1px solid #ccc; }
+        .header-grid { font-size: 0.6rem; font-weight: 800; text-align: center; color: var(--primary); }
+        .point-card { background: white; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 5px solid var(--primary); font-size: 0.8rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #modal-details { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 20000; align-items: center; justify-content: center; }
+        .details-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 450px; }
+        #table-trigo th, #table-trigo td { border: 1px solid #ddd; padding: 8px; }
+        #trigo-body tr:hover { background: #f1f2f6; }
+       .modal-content-wrapper { 
+       display: flex; flex-direction: row; gap: 20px; 
+       background: white; padding: 20px; border-radius: 15px; 
+       max-width: 95%; max-height: 90vh; overflow-y: auto;
+       }
+      @media (max-width: 800px) { .modal-content-wrapper { flex-direction: column; } }
+    
+
+/* Module des transformations planes */
+#modal-transformations {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+    z-index:26000; align-items:center; justify-content:center; padding:15px;
+}
+.transform-content {
+    background:#fff; width:min(560px,96vw); max-height:92vh; overflow-y:auto;
+    border-radius:16px; padding:20px; box-shadow:0 15px 45px rgba(0,0,0,.3);
+    border:2px solid var(--primary);
+}
+.transform-header { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:15px; }
+.transform-header h3 { margin:0; color:var(--primary); }
+.transform-close { background:var(--danger); color:white; border:0; border-radius:8px; padding:8px 12px; font-weight:800; cursor:pointer; }
+.transform-select { width:100%; padding:10px; border:2px solid var(--primary); border-radius:9px; font-weight:700; font-size:1rem; margin-bottom:14px; }
+.transform-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.transform-field { background:#f1f2f6; padding:10px; border-radius:9px; }
+.transform-field label { display:block; font-weight:800; font-size:.82rem; margin-bottom:5px; color:var(--dark); }
+.transform-field input { width:100%; padding:9px; border:1px solid #bbb; border-radius:7px; font-size:.95rem; }
+.transform-full { grid-column:1 / -1; }
+.transform-actions { display:flex; gap:8px; margin-top:15px; }
+.transform-actions button { flex:1; padding:11px; border:0; border-radius:9px; font-weight:800; cursor:pointer; }
+.transform-apply { background:var(--success); color:#fff; }
+.transform-result { margin-top:15px; padding:12px; background:#eef3f8; border-left:4px solid var(--primary); border-radius:9px; line-height:1.65; display:none; }
+.transform-formula { margin-top:10px; padding:10px; background:#fff; border-radius:8px; font-family:serif; font-size:1.05rem; overflow-x:auto; }
+#transformation-animation-controls {
+    display:none; position:fixed; left:50%; bottom:62px; transform:translateX(-50%);
+    z-index:24000; background:rgba(255,255,255,.97); border:2px solid var(--primary);
+    border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.22); padding:10px 14px;
+    align-items:center; gap:8px; flex-wrap:wrap; justify-content:center;
+}
+#transformation-animation-controls .anim-title { font-weight:800; color:var(--primary); margin-right:5px; }
+#transformation-animation-controls button { border:0; border-radius:8px; padding:9px 13px; font-weight:800; cursor:pointer; }
+#anim-play { background:var(--success); color:#fff; }
+#anim-pause { background:#f39c12; color:#fff; }
+#anim-replay { background:var(--primary); color:#fff; }
+#anim-close { background:var(--danger); color:#fff; }
+#anim-progress { width:150px; accent-color:var(--primary); cursor:pointer; }
+@media(max-width:600px){ #transformation-animation-controls{left:10px;right:10px;transform:none;bottom:58px;} #anim-progress{width:120px;} }
+
+@media(max-width:600px){ .transform-grid{grid-template-columns:1fr;} .transform-full{grid-column:auto;} }
+
+/* Fenêtre des solutions du solveur : cachée jusqu’à la résolution, puis affichée à côté du plan. */
+#modal-solutions {
+    display: none;
+    position: fixed;
+    top: 90px;
+    right: 18px;
+    width: min(430px, 38vw);
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+    background: #ffffff;
+    border: 2px solid var(--primary);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    z-index: 25000;
+    padding: 14px;
+    box-sizing: border-box;
+}
+#modal-solutions .solutions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding-bottom: 8px;
+}
+#modal-solutions .solutions-header h3 { margin: 0; color: var(--primary); }
+#modal-solutions .btn-fermer-solutions {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 800;
+}
+#modal-solutions .solution-item {
+    background: #f7f8fa;
+    border-left: 4px solid var(--primary);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+#modal-solutions .solution-name { font-weight: 800; color: var(--primary); margin-bottom: 5px; }
+#modal-solutions .solution-line { margin: 3px 0; }
+@media (max-width: 900px) {
+    #modal-solutions { width: min(460px, calc(100vw - 24px)); right: 12px; top: 75px; }
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body>
+<div id="verrou-ecran" style="display:flex;">
+  <div class="boite-auth" style="max-width:460px;width:calc(100% - 32px);">
+    <h1 style="font-family:'Fredoka One';color:var(--primary);font-size:2.5rem;margin-bottom:10px;">🧪</h1>
+    <h2 style="font-family:'Fredoka One';margin-top:0;">LABO MAÎTRE</h2>
+    <p style="opacity:.85;font-size:.9rem;">Laboratoire interactif des nombres complexes</p>
+    <div style="background:rgba(255,255,255,.08);padding:14px;border-radius:12px;margin:18px 0;text-align:left;">
+      <p style="margin:0 0 8px;font-size:.85rem;color:#fbbf24;font-weight:800;">ACCÈS PAYANT — ACTIVATION OBLIGATOIRE</p>
+      <p style="margin:0;font-size:.8rem;line-height:1.5;">1. Inscrivez votre nom et votre numéro. 2. Envoyez votre ID appareil au développeur pour les modalités de paiement et le code d’activation. 3. L’accès est ouvert uniquement après validation du paiement.</p>
+    </div>
+    <label for="labo-nom" style="display:block;text-align:left;font-size:.82rem;margin:10px 0 5px;">Nom complet</label>
+    <input id="labo-nom" type="text" autocomplete="name" style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:10px;" placeholder="Votre nom complet">
+    <label for="labo-tel" style="display:block;text-align:left;font-size:.82rem;margin:4px 0 5px;">Téléphone (Sénégal)</label>
+    <input id="labo-tel" type="tel" autocomplete="tel" inputmode="tel" style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:10px;" placeholder="Ex. 760153389">
+    <button id="labo-inscrire" onclick="inscrireLabo()" style="width:100%;padding:13px;background:var(--primary);color:white;border:0;border-radius:10px;font-weight:800;cursor:pointer;margin-bottom:16px;">ENREGISTRER MON PROFIL</button>
+    <div style="background:rgba(255,255,255,.08);padding:12px;border-radius:12px;margin:8px 0 12px;">
+      <p style="margin:0 0 5px;font-size:.78rem;">IDENTIFIANT DE CET APPAREIL</p>
+      <span id="code-client" style="color:#fbbf24;font-weight:800;font-size:1.15rem;overflow-wrap:anywhere;">Génération…</span>
+      <button type="button" onclick="copierIdLabo()" style="margin-left:8px;padding:6px 9px;border:0;border-radius:7px;cursor:pointer;">Copier</button>
+    </div>
+    <label for="pass-input" style="display:block;text-align:left;font-size:.82rem;margin:10px 0 5px;">Code PIN reçu après validation</label>
+    <input type="password" id="pass-input" inputmode="numeric" autocomplete="one-time-code" style="box-sizing:border-box;width:100%;padding:14px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:12px;text-align:center;font-size:1.1rem;" placeholder="Code d’activation">
+    <button onclick="tenterActivation()" style="width:100%;padding:14px;background:var(--success);color:white;border:0;border-radius:10px;font-weight:800;cursor:pointer;">VÉRIFIER LE PAIEMENT ET ACTIVER</button>
+    <p id="labo-auth-status" role="status" style="font-size:.8rem;line-height:1.45;color:#ddd;margin:12px 0 0;">L’application reste verrouillée jusqu’à la validation du paiement et de la licence.</p>
+    <p style="font-size:.72rem;color:#aaa;margin-top:14px;">Assistance : 76 015 33 89</p>
+  </div>
+</div>
+    <div id="app-interface" style="display: none; flex-direction: column; height: 100vh;">
+
+    <!-- Fenêtre des transformations planes -->
+    <div id="modal-transformations" onclick="fermerTransformations(event)">
+        <div class="transform-content" onclick="event.stopPropagation()">
+            <div class="transform-header">
+                <h3>🔄 Transformations planes</h3>
+                <button class="transform-close" onclick="fermerTransformations()">✕ Fermer</button>
+            </div>
+            <label style="font-weight:800;">Choisir la transformation</label>
+            <select id="transformation-type" class="transform-select" onchange="actualiserFormulaireTransformation()">
+                <option value="translation">Translation</option>
+                <option value="homothetie">Homothétie</option>
+                <option value="rotation">Rotation</option>
+                <option value="similitude">Similitude plane directe</option>
+            </select>
+            <div id="transformation-fields"></div>
+            <div class="transform-actions">
+                <button class="transform-apply" onclick="appliquerTransformation()">APPLIQUER LA TRANSFORMATION</button>
+                <button class="transform-apply" style="background:#6c5ce7" onclick="animerTransformation()">▶ ANIMER LA TRANSFORMATION</button>
+            </div>
+            <div id="transformation-result" class="transform-result"></div>
+        </div>
+    </div>
+
+    <!-- Commandes de l'animation des transformations -->
+    <div id="transformation-animation-controls" aria-label="Commandes de l'animation">
+        <span class="anim-title" id="anim-title">Transformation</span>
+        <button id="anim-play" onclick="lectureAnimationTransformation()">▶ Lecture</button>
+        <button id="anim-pause" onclick="pauseAnimationTransformation()">⏸ Pause</button>
+        <button id="anim-replay" onclick="rejouerAnimationTransformation()">↻ Rejouer</button>
+        <input id="anim-progress" type="range" min="0" max="100" value="0" step="1" oninput="positionnerAnimationTransformation(this.value)">
+        <button id="anim-close" onclick="fermerAnimationTransformation()">✕ Fermer</button>
+    </div>
+
+    <!-- Fenêtre automatique des solutions après résolution -->
+    <div id="modal-solutions">
+        <div class="solutions-header">
+            <h3>🧮 Résolution de l'équation</h3>
+            <button class="btn-fermer-solutions" onclick="fermerSolutions()">✕ Fermer</button>
+        </div>
+        <div id="solution-equation" style="background:#eef3f8; border-left:4px solid var(--primary); border-radius:8px; padding:10px; margin-bottom:10px; font-weight:800; overflow-x:auto;"></div>
+        <div id="solutions-intro" style="margin-bottom:10px; font-weight:700;">Les solutions de l'équation sont :</div>
+        <div id="solutions-list"></div>
+    </div>
+    <div id="modal-details" onclick="this.style.display='none'">
+        <div class="details-content" onclick="event.stopPropagation()">
+            <h3 id="det-title" style="margin-top:0; color:var(--primary)">Détails Mathématiques</h3>
+            <div id="det-alg" style="margin-bottom:10px;"></div>
+            <div id="det-mod" style="margin-bottom:10px;"></div>
+            <div id="det-arg" style="margin-bottom:10px;"></div>
+            <div id="det-trig" style="margin-bottom:10px; font-size:0.85rem; background:#f0f0f0; padding:5px;"></div>
+            <div id="det-exp" style="margin-bottom:20px; font-size:0.85rem; background:#f0f0f0; padding:5px;"></div>
+            <button onclick="document.getElementById('modal-details').style.display='none'" style="width:100%; padding:10px; background:var(--dark); color:white; border:none; border-radius:8px;">OK</button>
+        </div>
+    </div>
+
+        <div class="top-bar">
+            <button class="tool-btn" onclick="togglePanel('p-z')" style="background:#a29bfe; color:white;">Z</button>
+            <button class="tool-btn" onclick="creerConjugue()" style="background:#ef5350; color:white;">Z̄ Conjugué</button> 
+            <button class="tool-btn" onclick="toggleLayer('arg')">📐 Arg</button>
+            <button class="tool-btn" onclick="toggleLayer('mod')">📏 Mod</button>
+            <button class="tool-btn" onclick="togglePanel('p-rn')" style="background:#fab1a0;">ⁿ√z</button>
+            <button class="tool-btn" onclick="togglePanel('p-sol')" style="background:#ffeaa7;">🧮 Solveur Complexe</button>
+            <button class="tool-btn" onclick="ouvrirTransformations()" style="background:#74b9ff; color:white;">🔄 Transformations ▾</button>
+            <button class="tool-btn" id="mode-poly" onclick="tracerPolygone()" style="background:#fdcb6e;">📏 Polygone</button>
+            <button class="tool-btn" id="btn-segment" onclick="setMode('segment')" style="background:#81ecec;">📏 Segment</button>
+            <button class="tool-btn" id="btn-midpoint" onclick="setMode('midpoint')" style="background:#fdcb6e;">📍 Milieu</button>
+            <button class="tool-btn" id="btn-circle-cp" onclick="setMode('circle_cp')">🔘 Cercle (C-P)</button>
+            <button class="tool-btn" onclick="toggleLayer('cercle')" style="background:#81ecec;">🔘 Cercle (Racines)</button>
+            <button class="tool-btn" onclick="ouvrirMasterTrigo()" style="background:#6c5ce7; color:white;">🎯 MASTER TRIGO</button>
+        </div>
+
+        <div class="main-container">
+            <div class="side-bar">
+                <div id="p-sol" class="panel-box">
+                    <b style="color:var(--dark)">Équation Complexe ≤ Deg 5</b>
+                    <div class="solver-grid">
+                        <div></div><div class="header-grid">Partie Re</div><div class="header-grid">Partie Im</div>
+                        <div>a₅</div><input type="text" id="a5re" value="0"><input type="text" id="a5im" value="0">
+                        <div>a₄</div><input type="text" id="a4re" value="0"><input type="text" id="a4im" value="0">
+                        <div>a₃</div><input type="text" id="a3re" value="0"><input type="text" id="a3im" value="0">
+                        <div>a₂</div><input type="text" id="a2re" value="1"><input type="text" id="a2im" value="0">
+                        <div>a₁</div><input type="text" id="a1re" value="0"><input type="text" id="a1im" value="0">
+                        <div>a₀</div><input type="text" id="a0re" value="1"><input type="text" id="a0im" value="0">
+                     </div>
+                    <button onclick="solvePolynomeComplexe()" style="width:100%; margin-top:10px; background:var(--dark); color:white; border:none; padding:10px; border-radius:8px; font-weight:800;">CALCULER RACINES</button>
+                </div>
+                <div id="p-z" class="panel-box">
+                   Re: <input type="text" id="z-re" value="2" style="width:60px"> 
+                   Im: <input type="text" id="z-im" value="2" style="width:60px"> <button onclick="addZ()">Placer</button>
+                </div>
+                <div id="p-rn" class="panel-box">
+                   ⁿ√z: a <input type="text" id="rn-a" value="1" style="width:50px"> 
+                   b <input type="text" id="rn-b" value="0" style="width:50px"> 
+                   n <input type="number" id="rn-n" value="3" style="width:40px">
+                   <button onclick="calcRn()">Générer</button>
+                 </div>
+                <div id="p-list"></div>
+            </div>
+            <div class="workspace"><canvas id="complexCanvas"></canvas></div>
+        </div>
+
+        <div class="bottom-bar">
+            <button class="btn-action" onclick="zoom(1.2)">🔍+</button>
+            <button class="btn-action" onclick="zoom(0.8)">🔍-</button>
+            <button class="tool-btn" onclick="toggleGraduations()" title="Afficher/Masquer Graduation">🔢 Grad</button>
+            <button class="tool-btn" onclick="downloadImage()" style="background:#00b894; color:white;">💾 Télécharger</button>
+            <button class="btn-action" onclick="undo()">↩️ Précédent</button>
+            <button class="btn-action" onclick="redo()">↪️ Rétablir</button>
+            <button class="btn-action" onclick="resetAll()" style="background:var(--danger); color:white;">🗑️ Reset</button>
+            <button class="btn-action" onclick="resetView()" style="background:var(--success); color:white;">🏠 Vue O</button>
+            <button class="tool-btn" onclick="clearAll()" style="background:#ff7675; color:white;">🗑️ Tout Effacer</button>
+            <div class="tool-btn" title="Couleur des prochaines constructions">🎨 Couleur <input type="color" id="globalColor" value="#6c5ce7"></div>
+            <button class="tool-btn" onclick="retourAccueil()" style="background:#2d3436; color:white;">🏠 Accueil</button>
+            <button class="btn-action" onclick="ouvrirAide()" style="background:var(--primary); color:white;">❓ Aide</button>
+        </div>
+    </div>
+
+<script>
+// --- SÉCURITÉ LABO MAÎTRE : accès payant, profil et vérification Firebase ---
+const LABO_DB_URL = "https://maths5eme-v1-default-rtdb.europe-west1.firebasedatabase.app";
+const LABO_APP_KEY = "labo_maitre";
+const LABO_SECRET_KEY = 7391; // même logique de génération PIN que MATHS 5ème
+let laboDatabase = null;
+try {
+  if (window.firebase && !firebase.apps.length) firebase.initializeApp({ databaseURL: LABO_DB_URL });
+  if (window.firebase) laboDatabase = firebase.database();
+} catch (e) { console.error('Initialisation Firebase impossible', e); }
+
+function getDeviceIdLabo() {
+  let id = localStorage.getItem('labo_maitre_device_id');
+  if (!id) {
+    const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const timePart = Date.now().toString(36).slice(-5).toUpperCase();
+    id = `LM-${randomPart}${timePart}`;
+    localStorage.setItem('labo_maitre_device_id', id);
+  }
+  return id;
+}
+function calculerPinLabo(device) {
+  let hash = 0;
+  for (let i = 0; i < device.length; i++) { hash = ((hash << 5) - hash) + device.charCodeAt(i); hash |= 0; }
+  return Math.abs(hash + LABO_SECRET_KEY).toString().substring(0, 8);
+}
+function laboRef(tel) { return laboDatabase.ref(`labo_maitre_clients/${tel}/infos_client`); }
+function laboStatus(message, error=false) {
+  const el = document.getElementById('labo-auth-status');
+  if (el) { el.textContent = message; el.style.color = error ? '#ff7777' : '#ddd'; }
+}
+function copierIdLabo() {
+  const id = getDeviceIdLabo();
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(id).then(()=>laboStatus('ID appareil copié. Envoyez-le au développeur.')).catch(()=>laboStatus('Votre ID appareil : ' + id));
+  else laboStatus('Votre ID appareil : ' + id);
+}
+async function inscrireLabo() {
+  const nom = (document.getElementById('labo-nom')?.value || '').trim();
+  const tel = (document.getElementById('labo-tel')?.value || '').replace(/\D/g, '');
+  if (!nom || tel.length < 8) return laboStatus('Veuillez saisir votre nom et un numéro de téléphone valide.', true);
+  if (!laboDatabase) return laboStatus('Connexion Firebase indisponible. Vérifiez Internet puis réessayez.', true);
+  const btn = document.getElementById('labo-inscrire'); if (btn) btn.disabled = true;
+  try {
+    const ref = laboRef(tel);
+    const snap = await ref.once('value');
+    if (snap.exists()) {
+      const data = snap.val() || {};
+      if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu') {
+        laboStatus('Accès suspendu. Contactez le développeur.', true); return;
+      }
+      localStorage.setItem('labo_maitre_tel', tel);
+      document.getElementById('labo-nom').value = data.nom || nom;
+      document.getElementById('labo-tel').value = tel;
+      laboStatus(data.statut_paiement === 'VALIDE' ? 'Profil retrouvé. Saisissez votre code PIN pour vérifier votre licence.' : 'Profil déjà enregistré. Le paiement doit être validé par le développeur avant l’activation.');
+      return;
+    }
+    const now = new Date().toISOString();
+    await ref.set({
+      nom, tel, application: LABO_APP_KEY, device_id: getDeviceIdLabo(),
+      etat_acces: 'actif', statut: 'actif', acces: 'actif',
+      statut_paiement: 'EN_ATTENTE', date_inscription: now,
+      dernier_token: 'init_' + Math.random().toString(36).slice(2, 11)
+    });
+    localStorage.setItem('labo_maitre_tel', tel);
+    laboStatus('Profil enregistré. Le paiement n’est PAS encore validé : l’application reste verrouillée. Envoyez votre ID appareil au développeur et attendez la confirmation.');
+  } catch (e) {
+    console.error('Inscription LABO MAÎTRE', e);
+    laboStatus('Impossible d’enregistrer le profil. Vérifiez les règles Firebase et la connexion.', true);
+  } finally { if (btn) btn.disabled = false; }
+}
+async function tenterActivation() {
+  const input = document.getElementById('pass-input');
+  const pin = (input?.value || '').trim();
+  const tel = (localStorage.getItem('labo_maitre_tel') || (document.getElementById('labo-tel')?.value || '').replace(/\D/g, '')).trim();
+  if (!tel) return laboStatus('Enregistrez d’abord votre profil avec votre numéro de téléphone.', true);
+  if (!pin) return laboStatus('Saisissez le code PIN reçu.', true);
+  if (!laboDatabase) return laboStatus('Impossible de vérifier le paiement : Firebase est indisponible. Accès refusé par sécurité.', true);
+  laboStatus('Vérification du paiement et de la licence…');
+  try {
+    const snap = await laboRef(tel).once('value');
+    if (!snap.exists()) return laboStatus('Profil introuvable. Enregistrez d’abord votre profil.', true);
+    const data = snap.val() || {};
+    if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu' || data.acces === 'suspendu') {
+      localStorage.removeItem('geoActive_V31');
+      return laboStatus('Accès suspendu ou banni par l’administration.', true);
+    }
+    if (data.statut_paiement !== 'VALIDE') {
+      localStorage.removeItem('geoActive_V31');
+      return laboStatus('Paiement non validé. L’accès reste fermé jusqu’à confirmation du développeur.', true);
+    }
+    const device = getDeviceIdLabo();
+    if (data.device_id && data.device_id !== device) {
+      localStorage.removeItem('geoActive_V31');
+      return laboStatus('Cet appareil ne correspond pas à celui enregistré. Contactez le développeur pour une récupération.', true);
+    }
+    if (pin !== calculerPinLabo(device)) return laboStatus('Code PIN incorrect pour cet appareil.', true);
+    const token = 'lm_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    await laboRef(tel).update({ dernier_token: token, derniere_connexion: new Date().toISOString(), device_id: device });
+    localStorage.setItem('labo_maitre_tel', tel);
+    localStorage.setItem('labo_maitre_session_token', token);
+    localStorage.setItem('geoActive_V31', 'true');
+    document.getElementById('verrou-ecran').style.display = 'none';
+    document.getElementById('app-interface').style.display = 'flex';
+    laboStatus('Licence validée.');
+    if (typeof resize === 'function') setTimeout(() => resize(), 50);
+    surveillerLicenceLabo();
+  } catch (e) {
+    console.error('Vérification licence LABO MAÎTRE', e);
+    localStorage.removeItem('geoActive_V31');
+    laboStatus('Vérification serveur impossible. Aucun accès hors ligne n’est accordé.', true);
+  }
+}
+async function verifierLicenceLaboAuDemarrage() {
+  const afficheur = document.getElementById('code-client');
+  if (afficheur) afficheur.textContent = getDeviceIdLabo();
+  const tel = localStorage.getItem('labo_maitre_tel');
+  const verrou = document.getElementById('verrou-ecran');
+  const app = document.getElementById('app-interface');
+  if (verrou) verrou.style.display = 'flex';
+  if (app) app.style.display = 'none';
+  if (!tel || localStorage.getItem('geoActive_V31') !== 'true') return;
+  if (!laboDatabase) { localStorage.removeItem('geoActive_V31'); return laboStatus('Connexion serveur requise pour vérifier la licence.', true); }
+  try {
+    const snap = await laboRef(tel).once('value');
+    const data = snap.val() || {};
+    const device = getDeviceIdLabo();
+    const token = localStorage.getItem('labo_maitre_session_token');
+    if (!snap.exists() || data.statut_paiement !== 'VALIDE' || ['banni','suspendu'].includes(data.etat_acces) || data.statut === 'suspendu' || data.acces === 'suspendu' || (data.device_id && data.device_id !== device) || (data.dernier_token && token && data.dernier_token !== token)) {
+      localStorage.removeItem('geoActive_V31');
+      localStorage.removeItem('labo_maitre_session_token');
+      return laboStatus('Licence non valide, suspendue ou ouverte sur un autre appareil. Veuillez vous reconnecter.', true);
+    }
+    if (verrou) verrou.style.display = 'none';
+    if (app) app.style.display = 'flex';
+    surveillerLicenceLabo();
+    setTimeout(() => { if (typeof resize === 'function') resize(); }, 80);
+  } catch (e) {
+    localStorage.removeItem('geoActive_V31');
+    laboStatus('Impossible de confirmer la licence en ligne. Accès verrouillé.', true);
+  }
+}
+function surveillerLicenceLabo() {
+  const tel = localStorage.getItem('labo_maitre_tel');
+  if (!tel || !laboDatabase) return;
+  laboDatabase.ref(`labo_maitre_clients/${tel}/infos_client`).on('value', snap => {
+    const data = snap.val() || {};
+    if (!snap.exists() || data.statut_paiement !== 'VALIDE' || ['banni','suspendu'].includes(data.etat_acces) || data.statut === 'suspendu' || data.acces === 'suspendu') {
+      localStorage.removeItem('geoActive_V31');
+      localStorage.removeItem('labo_maitre_session_token');
+      const verrou = document.getElementById('verrou-ecran'); if (verrou) verrou.style.display = 'flex';
+      const app = document.getElementById('app-interface'); if (app) app.style.display = 'none';
+      laboStatus('Votre accès a été suspendu ou votre paiement n’est plus valide.', true);
+    }
+  });
+  laboDatabase.ref(`labo_maitre_clients/${tel}/infos_client/dernier_token`).on('value', snap => {
+    const token = localStorage.getItem('labo_maitre_session_token');
+    if (token && snap.val() && snap.val() !== token) {
+      localStorage.removeItem('geoActive_V31');
+      localStorage.removeItem('labo_maitre_session_token');
+      const verrou = document.getElementById('verrou-ecran'); if (verrou) verrou.style.display = 'flex';
+      const app = document.getElementById('app-interface'); if (app) app.style.display = 'none';
+      laboStatus('Session interrompue : ce compte a été ouvert sur un autre appareil.', true);
+    }
+  });
+}
+window.addEventListener('DOMContentLoaded', verifierLicenceLaboAuDemarrage);
+
+// --- MOTEUR (Initialisation des variables) ---
+    const canvas = document.getElementById('complexCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // État de l'application
+    let points = []; 
+    let links = []; 
+    let customCircles = [];
+    // État du polygone : déclaré explicitement pour éviter une erreur
+    // dans saveState() et permettre son affichage/masquage.
+    let polygonLinks = [];
+    let polygonVisible = false;
+    let history = []; 
+    let redoStack = [];
+    let layers = { mod: false, arg: false, cercle: false };
+    let scale = 50; 
+    let ox, oy; 
+    let mode = 'normal';
+    let selIdx = null; 
+    let lastRootRadius = 0;
+    let showGraduations = true;
+
+    function saveState() {
+        history.push(JSON.stringify({ points, links, customCircles, polygonLinks, polygonVisible, lastRootRadius }));
+        if (history.length > 30) history.shift();
+        redoStack = [];
+    }
+
+    function toggleGraduations() {
+    showGraduations = !showGraduations;
+    draw(); // On redessine immédiatement
+}
+    function undo() {
+        if (history.length > 0) {
+            redoStack.push(JSON.stringify({ points, links, customCircles, polygonLinks, polygonVisible, lastRootRadius }));
+            let state = JSON.parse(history.pop());
+            points = state.points; links = state.links; customCircles = state.customCircles; polygonLinks = state.polygonLinks || []; polygonVisible = !!state.polygonVisible; lastRootRadius = state.lastRootRadius;
+            updateUI();
+        }
+    }
+
+    function redo() {
+        if (redoStack.length > 0) {
+            history.push(JSON.stringify({ points, links, customCircles, polygonLinks, polygonVisible, lastRootRadius }));
+            let state = JSON.parse(redoStack.pop());
+            points = state.points; links = state.links; customCircles = state.customCircles; polygonLinks = state.polygonLinks || []; polygonVisible = !!state.polygonVisible; lastRootRadius = state.lastRootRadius;
+            updateUI();
+        }
+    }
+
+    function resize() { 
+        canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight;
+        ox = canvas.width/2; oy = canvas.height/2; draw(); 
+    }
+  window.onresize = resize;
+
+    // --- DEBUT DU BLOC A REMPLACER ---
+    
+    // 1. GESTION DES CLICS (Cercle, Segment, Sélection)
+    canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    
+    // Coordonnées mathématiques
+    const mathX = (mx - ox) / scale;
+    const mathY = (oy - my) / scale;
+
+    // Détection d'un point existant sous le clic
+    let clickedIdx = null;
+    points.forEach((p, i) => {
+        const px = ox + p.a * scale;
+        const py = oy - p.b * scale;
+        if (Math.hypot(mx - px, my - py) < 15) clickedIdx = i;
+    });
+
+    // --- LOGIQUE DES MODES DE CONSTRUCTION ---
+    if (mode === 'circle_cp' || mode === 'segment' || mode === 'midpoint') {
+        if (selIdx === null) {
+            // Premier clic : on sélectionne un point ou on en crée un
+            if (clickedIdx !== null) {
+                selIdx = clickedIdx;
+            } else {
+                saveState();
+                const newIdx = points.length;
+                points.push({ name: "P" + (newIdx + 1), a: mathX, b: mathY, visible: true, color: document.getElementById('globalColor').value });
+                selIdx = newIdx;
+            }
+        } else {
+            // Deuxième clic : on finalise l'action
+            saveState();
+            let secondIdx = clickedIdx;
+            if (secondIdx === null) {
+                secondIdx = points.length;
+                points.push({ name: "P" + (secondIdx + 1), a: mathX, b: mathY, visible: true, color: document.getElementById('globalColor').value });
+            }
+            
+            if (mode === 'circle_cp') {
+                customCircles.push({ center: selIdx, edge: secondIdx });
+            } else if (mode === 'segment') {
+                links.push([selIdx, secondIdx]);
+            } else if (mode === 'midpoint') {
+                // CALCUL DU MILIEU
+                const p1 = points[selIdx];
+                const p2 = points[secondIdx];
+                const midX = (p1.a + p2.a) / 2;
+                const midY = (p1.b + p2.b) / 2;
+                points.push({ 
+                    name: "M", 
+                    a: midX, 
+                    b: midY, 
+                    visible: true, 
+                    color: "orange" 
+                });
+            }
+            
+            selIdx = null; // On réinitialise pour la prochaine construction
+            updateUI();
+        }
+    } else {
+        // Mode Normal : Sélection simple
+        if (clickedIdx !== null) {
+            selIdx = clickedIdx;
+            showDetails(clickedIdx);
+        } else {
+            selIdx = null;
+        }
+    }
+    draw();
+});
+
+    // 2. GESTION DES MODES (Allumage des boutons)
+    function setMode(m) {
+        mode = (mode === m) ? 'normal' : m;
+        selIdx = null;
+
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active-mode');
+            if (mode === 'circle_cp' && btn.innerText.includes("Cercle (C-P)")) btn.classList.add('active-mode');
+            if (mode === 'segment' && btn.innerText.includes("Segment")) btn.classList.add('active-mode');
+        });
+
+        draw();
+    }
+
+    // --- FIN DU BLOC A REMPLACER ---
+
+    // --- DESSIN (AVEC FLÈCHES) ---
+    function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Grille de fond
+    ctx.strokeStyle = "#eee"; ctx.lineWidth = 1; ctx.beginPath();
+    for(let i = -30; i <= 30; i++) { 
+        ctx.moveTo(ox + i * scale, 0); ctx.lineTo(ox + i * scale, canvas.height); 
+        ctx.moveTo(0, oy + i * scale); ctx.lineTo(canvas.width, oy + i * scale); 
+    }
+    ctx.stroke();
+
+    // 2. Axes principaux (O, x, y)
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(0, oy); ctx.lineTo(canvas.width, oy); // Axe horizontal
+    ctx.moveTo(ox, 0); ctx.lineTo(ox, canvas.height); // Axe vertical
+    ctx.stroke();
+    // 1. Dessiner le point O (Origine)
+ctx.fillStyle = "black";
+ctx.beginPath();
+ctx.arc(ox, oy, 4, 0, Math.PI * 2);
+ctx.fill();
+ctx.fillText("O", ox - 15, oy + 15);
+
+// 2. Dessiner le vecteur u (sur l'axe des réels : 1 + 0i)
+dessinerVecteurDirecteur(1, 0, "u", "#e67e22"); 
+
+// 3. Dessiner le vecteur v (sur l'axe des imaginaires : 0 + 1i)
+dessinerVecteurDirecteur(0, 1, "v", "#2ecc71");
+
+    // --- NOUVEAU : DESSIN DES GRADUATIONS ---
+    if (showGraduations) {
+        ctx.fillStyle = "#666";
+        ctx.font = "10px Arial";
+        ctx.lineWidth = 1;
+        
+        // Graduations horizontales (X)
+        for (let i = -20; i <= 20; i++) {
+            if (i === 0) continue;
+            let x = ox + i * scale;
+            ctx.beginPath();
+            ctx.moveTo(x, oy - 5);
+            ctx.lineTo(x, oy + 5);
+            ctx.stroke();
+            ctx.fillText(i, x - 5, oy + 20);
+        }
+
+        // Graduations verticales (Y)
+        for (let i = -20; i <= 20; i++) {
+            if (i === 0) continue;
+            let y = oy - i * scale;
+            ctx.beginPath();
+            ctx.moveTo(ox - 5, y);
+            ctx.lineTo(ox + 5, y);
+            ctx.stroke();
+            ctx.fillText(i + "i", ox + 10, y + 5);
+        }
+    }
+   // 3. Cercle de rayon des racines (si activé)
+    if(layers.cercle && lastRootRadius > 0) {
+        ctx.save(); // On sauvegarde l'état pour ne pas impacter les autres tracés
+        ctx.strokeStyle = "#0984e3"; // Bleu foncé (ou "#d63031" pour Rouge foncé)
+        ctx.lineWidth = 2;           // On épaissit un peu le trait
+        ctx.setLineDash([8, 4]);     // Pointillés plus longs pour être plus visibles
+        ctx.beginPath(); 
+        ctx.arc(ox, oy, lastRootRadius * scale, 0, Math.PI * 2); 
+        ctx.stroke(); 
+        ctx.setLineDash([]);         // On réinitialise les pointillés
+        ctx.restore();
+    }
+
+    // 4. Dessin des Cercles personnalisés (Mode C-P)
+    customCircles.forEach(c => {
+        const p1 = points[c.center], p2 = points[c.edge];
+        if(p1?.visible && p2?.visible) {
+            const r = Math.hypot(p1.a - p2.a, p1.b - p2.b);
+            ctx.strokeStyle = p1.color; ctx.beginPath(); ctx.arc(ox + p1.a * scale, oy - p1.b * scale, r * scale, 0, Math.PI * 2); ctx.stroke();
+        }
+    });
+
+    // 5. Dessin du polygone (affichage indépendant des segments)
+    if (polygonVisible && polygonLinks.length >= 2) {
+        ctx.save();
+        ctx.strokeStyle = "#fd7e14";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        polygonLinks.forEach(l => {
+            const p1 = points[l[0]], p2 = points[l[1]];
+            if(p1?.visible && p2?.visible) {
+                ctx.beginPath();
+                ctx.moveTo(ox + p1.a * scale, oy - p1.b * scale);
+                ctx.lineTo(ox + p2.a * scale, oy - p2.b * scale);
+                ctx.stroke();
+            }
+        });
+        ctx.restore();
+    }
+
+    // 6. Dessin des Segments
+    links.forEach(l => {
+        const p1 = points[l[0]], p2 = points[l[1]];
+        if(p1?.visible && p2?.visible) {
+            ctx.strokeStyle = p1.color; ctx.beginPath(); ctx.moveTo(ox + p1.a * scale, oy - p1.b * scale);
+            ctx.lineTo(ox + p2.a * scale, oy - p2.b * scale); ctx.stroke();
+        }
+    });
+
+    // 6. Animation pédagogique d'une transformation en cours.
+    // Le point image final existe déjà dans points, mais pendant l'animation
+    // on masque son rendu et on dessine sa position intermédiaire.
+    if (transformationAnimation?.data) {
+        const d = transformationAnimation.data;
+        const p = positionAnimationTransformation(transformationAnimation.progress);
+        const pxA = ox + d.zA.re * scale, pyA = oy - d.zA.im * scale;
+        const px = ox + p.re * scale, py = oy - p.im * scale;
+        const zO = d.parametres.zO;
+
+        ctx.save();
+        ctx.lineWidth = 2;
+        ctx.setLineDash([7,5]);
+        ctx.strokeStyle = '#6c5ce7';
+        ctx.beginPath(); ctx.moveTo(pxA,pyA); ctx.lineTo(px,py); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Pour une translation : matérialisation du vecteur de translation u
+        // et de son image AA', afin de visualiser leur parallélisme.
+        if (d.type === 'translation') {
+            const ux = d.parametres.u.re, uy = d.parametres.u.im;
+            const uEndX = ox + ux * scale, uEndY = oy - uy * scale;
+            const aEndX = pxA + ux * scale, aEndY = pyA - uy * scale;
+            const drawArrow = (x1, y1, x2, y2, color, label) => {
+                const ang = Math.atan2(y2 - y1, x2 - x1);
+                const head = 9;
+                ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2.5;
+                ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x2,y2);
+                ctx.lineTo(x2-head*Math.cos(ang-Math.PI/6), y2-head*Math.sin(ang-Math.PI/6));
+                ctx.lineTo(x2-head*Math.cos(ang+Math.PI/6), y2-head*Math.sin(ang+Math.PI/6));
+                ctx.closePath(); ctx.fill();
+                if (label) { ctx.font='bold 13px Poppins'; ctx.fillText(label,x2+7,y2-7); }
+            };
+            // Vecteur de translation de référence : O -> u
+            drawArrow(ox, oy, uEndX, uEndY, '#e67e22', 'u');
+            // Copie du vecteur au point A : A -> A' (toujours parallèle à u)
+            drawArrow(pxA, pyA, aEndX, aEndY, '#6c5ce7', `${d.nomA}${d.nomImage}`);
+            ctx.fillStyle='#e67e22'; ctx.font='bold 12px Poppins';
+            ctx.fillText('vecteur de translation', uEndX+7, uEndY+18);
+        }
+
+        // Pour les transformations centrées : matérialisation du centre et du rayon.
+        if (d.type !== 'translation' && zO) {
+            const oxp=ox+zO.re*scale, oyp=oy-zO.im*scale;
+            ctx.strokeStyle='#e67e22';
+            ctx.beginPath(); ctx.moveTo(oxp,oyp); ctx.lineTo(px,py); ctx.stroke();
+            ctx.fillStyle='#e67e22'; ctx.beginPath(); ctx.arc(oxp,oyp,5,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle='#222'; ctx.font='bold 12px Poppins'; ctx.fillText('O',oxp+8,oyp-8);
+
+            if ((d.type === 'rotation' || d.type === 'similitude') && Math.hypot(d.zA.re-zO.re,d.zA.im-zO.im)>1e-10) {
+                const startAng=-Math.atan2(d.zA.im-zO.im,d.zA.re-zO.re);
+                const endAng=startAng - (d.parametres.theta * transformationAnimation.progress);
+                const r=Math.hypot(d.zA.re-zO.re,d.zA.im-zO.im)*scale*0.7;
+                ctx.strokeStyle='#d63031';
+                ctx.beginPath(); ctx.arc(oxp,oyp,r,startAng,endAng,d.parametres.theta>0); ctx.stroke();
+                const midAng=(startAng+endAng)/2;
+                ctx.fillStyle='#d63031'; ctx.font='bold 13px Poppins';
+                ctx.fillText('θ',oxp+(r+8)*Math.cos(midAng),oyp+(r+8)*Math.sin(midAng));
+            }
+        }
+
+        // Point antécédent et point image en mouvement.
+        ctx.fillStyle=d.dataColor || '#6c5ce7';
+        ctx.beginPath(); ctx.arc(pxA,pyA,7,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#222'; ctx.font='bold 13px Poppins'; ctx.fillText(d.nomA,pxA+9,pyA-9);
+        ctx.fillStyle='#e84393';
+        ctx.beginPath(); ctx.arc(px,py,8,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#222'; ctx.fillText(d.nomImage,px+10,py-10);
+        ctx.restore();
+    }
+
+    // 7. Boucle principale sur les points (Module, Argument, Point)
+    points.forEach((p, i) => {
+        if(!p.visible) return;
+        if (transformationAnimation?.data && p.name === transformationAnimation.data.nomImage && transformationAnimation.progress < 1) return;
+        const px = ox + p.a * scale, py = oy - p.b * scale;
+
+        // --- TRACÉ DU MODULE (Segment en pointillés) ---
+        if(layers.mod) {
+            ctx.save();
+            ctx.strokeStyle = p.color;
+            ctx.setLineDash([5, 5]); // Effet pointillés
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(ox, oy);
+            ctx.lineTo(px, py);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // --- TRACÉ DE L'ARGUMENT (Vecteur et Arc) ---
+        if(layers.arg) {
+            const ang = -Math.atan2(p.b, p.a);
+            const head = 10;
+            ctx.strokeStyle = "red"; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(px, py); ctx.stroke();
+            
+            // Flèche au bout du vecteur
+            const aV = Math.atan2(py - oy, px - ox);
+            ctx.beginPath(); ctx.moveTo(px, py);
+            ctx.lineTo(px - head * Math.cos(aV - Math.PI / 6), py - head * Math.sin(aV - Math.PI / 6));
+            ctx.lineTo(px - head * Math.cos(aV + Math.PI / 6), py - head * Math.sin(aV + Math.PI / 6));
+            ctx.fillStyle = "red"; ctx.fill();
+            
+            // Arc de cercle pour l'angle
+            const rA = 30;
+            ctx.beginPath(); ctx.arc(ox, oy, rA, 0, ang, p.b > 0); ctx.stroke();
+            
+            // Flèche sur l'arc
+            const ax = ox + rA * Math.cos(ang), ay = oy + rA * Math.sin(ang);
+            const dF = ang + (p.b > 0 ? -Math.PI / 2 : Math.PI / 2);
+            ctx.beginPath(); ctx.moveTo(ax, ay);
+            ctx.lineTo(ax - head * Math.cos(dF - Math.PI / 6), ay - head * Math.sin(dF - Math.PI / 6));
+            ctx.lineTo(ax - head * Math.cos(dF + Math.PI / 6), ay - head * Math.sin(dF + Math.PI / 6));
+            ctx.fill();
+        }
+
+        // --- DESSIN FINAL DU POINT ---
+        ctx.fillStyle = (selIdx === i) ? "black" : p.color; 
+        ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fill();
+        
+        // Nom du point
+        ctx.fillStyle = "black"; ctx.font = "bold 12px Poppins"; 
+        ctx.fillText(p.name, px + 8, py - 8);
+    });
+}
+    // --- FONCTIONS ACTIONS ---
+    
+   function solvePolynomeComplexe() {
+    saveState();
+    const poly = [];
+    
+    // 1. Récupération des coefficients
+    try {
+        for(let i = 0; i <= 5; i++) {
+            const re = evalMath(document.getElementById(`a${i}re`).value);
+            const im = evalMath(document.getElementById(`a${i}im`).value);
+            poly.push({ re: re, im: im });
+        }
+    } catch (e) {
+        alert("Erreur dans les coefficients");
+        return;
+    }
+    
+    // 2. Détermination du degré
+    let deg = 5; 
+    while(deg > 0 && Math.abs(poly[deg].re) < 1e-12 && Math.abs(poly[deg].im) < 1e-12) deg--;
+    
+    if(deg === 0) {
+        alert("Degré non valide");
+        return;
+    }
+
+    // 3. Initialisation (Racines sur le cercle unité avec décalage pour éviter les axes)
+    let roots = [];
+    for(let i = 0; i < deg; i++) { 
+        let ang = (2 * Math.PI * i) / deg + 0.392; // Décalage fixe
+        roots.push({re: Math.cos(ang), im: Math.sin(ang)}); 
+    }
+
+    // 4. Boucle d'Aberth-Ehrlich
+    for(let iter = 0; iter < 100; iter++) {
+        let newRoots = [];
+        for(let i = 0; i < deg; i++) {
+            let z = roots[i];
+
+            // Évaluation de P(z) par la méthode de Horner
+            let pz = {re: poly[deg].re, im: poly[deg].im};
+            for(let j = deg - 1; j >= 0; j--) {
+                let re = pz.re * z.re - pz.im * z.im + poly[j].re;
+                let im = pz.re * z.im + pz.im * z.re + poly[j].im;
+                pz = {re: re, im: im};
+            }
+
+            // Calcul du terme correcteur : P(z) / Coeff_Principal
+            let pz_norm = {
+                re: (pz.re * poly[deg].re + pz.im * poly[deg].im) / (poly[deg].re**2 + poly[deg].im**2),
+                im: (pz.im * poly[deg].re - pz.re * poly[deg].im) / (poly[deg].re**2 + poly[deg].im**2)
+            };
+
+            // Calcul de la somme d'Aberth : Sum( 1 / (z_i - z_j) )
+            let sum = {re: 0, im: 0};
+            for(let j = 0; j < deg; j++) {
+                if(i === j) continue;
+                let dx = z.re - roots[j].re;
+                let dy = z.im - roots[j].im;
+                let d2 = dx*dx + dy*dy + 1e-20; // +epsilon pour sécurité
+                sum.re += dx / d2;
+                sum.im -= dy / d2;
+            }
+
+            // Calcul du dénominateur : 1 - (P(z)/P_lead) * sum / (produit des racines)
+            // Pour simplifier et stabiliser : on utilise la version de Durand-Kerner
+            // qui est plus robuste pour le degré 2 et 3
+            let prod = {re: 1, im: 0};
+            for(let j = 0; j < deg; j++) {
+                if(i === j) continue;
+                let dx = z.re - roots[j].re;
+                let dy = z.im - roots[j].im;
+                let re = prod.re * dx - prod.im * dy;
+                let im = prod.re * dy + prod.im * dx;
+                prod = {re: re, im: im};
+            }
+
+            let denMag2 = (prod.re**2 + prod.im**2) + 1e-20;
+            let offsetRe = (pz_norm.re * prod.re + pz_norm.im * prod.im) / denMag2;
+            let offsetIm = (pz_norm.im * prod.re - pz_norm.re * prod.im) / denMag2;
+
+            newRoots.push({
+                re: z.re - offsetRe,
+                im: z.im - offsetIm
+            });
+        }
+        roots = newRoots;
+    }
+
+    // 5. Affichage final propre
+    roots.forEach((r, idx) => {
+        let finalRe = Math.abs(r.re) < 1e-8 ? 0 : r.re;
+        let finalIm = Math.abs(r.im) < 1e-8 ? 0 : r.im;
+        const point = {
+            name: "sol" + (idx + 1),
+            a: finalRe,
+            b: finalIm,
+            visible: true,
+            color: "purple"
+        };
+
+        // Pour une équation générale à coefficients complexes, on conserve
+        // les valeurs numériques du solveur et on ajoute seulement, lorsque
+        // c'est fiable, une représentation exacte pour l'affichage.
+        enrichirFormeExacte(point);
+        points.push(point);
+    });
+    updateUI();
+    // Ouvre automatiquement la fenêtre récapitulative des solutions,
+    // avec l'équation effectivement saisie dans le solveur.
+    const equationTxt = formaterEquationPolynome(poly, deg);
+    afficherSolutionsSolveur(equationTxt);
+}
+
+function formaterCoefficientComplexe(re, im) {
+    const r = Math.abs(re) < 1e-12 ? 0 : re;
+    const i = Math.abs(im) < 1e-12 ? 0 : im;
+    const rTxt = toFrac(r);
+    const iAbsTxt = toFrac(Math.abs(i));
+
+    if (i === 0) return rTxt;
+    if (r === 0) {
+        if (i === 1) return 'i';
+        if (i === -1) return '-i';
+        return `${i < 0 ? '-' : ''}${iAbsTxt}i`;
+    }
+
+    return `(${rTxt} ${i > 0 ? '+ ' : '- '}${iAbsTxt}i)`;
+}
+
+function formaterEquationPolynome(poly, deg) {
+    const termes = [];
+
+    for (let puissance = deg; puissance >= 0; puissance--) {
+        const c = poly[puissance];
+        const re = Math.abs(c.re) < 1e-12 ? 0 : c.re;
+        const im = Math.abs(c.im) < 1e-12 ? 0 : c.im;
+        if (re === 0 && im === 0) continue;
+
+        const coeffTxt = formaterCoefficientComplexe(re, im);
+        const estReel = im === 0;
+        const coeffUnite = estReel && Math.abs(re) === 1;
+        let terme;
+
+        if (puissance === 0) {
+            terme = coeffTxt;
+        } else {
+            const variable = puissance === 1 ? 'z' : `z^${puissance}`;
+            if (coeffUnite) {
+                terme = re < 0 ? `-${variable}` : variable;
+            } else if (estReel && re < 0) {
+                terme = `-${toFrac(Math.abs(re))}${variable}`;
+            } else {
+                terme = `${coeffTxt}${variable}`;
+            }
+        }
+
+        if (termes.length === 0) {
+            termes.push(terme);
+        } else if (terme.startsWith('-')) {
+            termes.push(`- ${terme.substring(1)}`);
+        } else {
+            termes.push(`+ ${terme}`);
+        }
+    }
+
+    return `${termes.join(' ')} = 0`;
+}
+
+function fermerSolutions() {
+    const modal = document.getElementById('modal-solutions');
+    const equationBox = document.getElementById('solution-equation');
+    const list = document.getElementById('solutions-list');
+
+    // Ferme la fenêtre et efface complètement son contenu.
+    // Ainsi, aucune information d'une ancienne équation ne reste affichée.
+    if (modal) modal.style.display = 'none';
+    if (equationBox) equationBox.textContent = '';
+    if (list) list.innerHTML = '';
+}
+
+function formaterAlgebriqueSolution(p) {
+    const reExact = p.exactRe !== undefined ? p.exactRe : toFrac(p.a);
+    const imAbsExact = p.exactIm !== undefined ? p.exactIm : toFrac(Math.abs(p.b));
+    if (imAbsExact === "0") return reExact;
+    if (p.exactIm !== undefined) {
+        return `${reExact} ${String(p.exactIm).startsWith('-') ? '- ' + String(p.exactIm).substring(1) : '+ ' + imAbsExact}i`;
+    }
+    return `${reExact} ${p.b >= 0 ? '+ ' + imAbsExact : '- ' + imAbsExact}i`;
+}
+
+function formaterArgumentSolution(p) {
+    const theta = Math.atan2(p.b, p.a);
+    const ratioPi = theta / Math.PI;
+    let argExact = p.exactArg;
+    if (argExact === undefined) {
+        const ratioTxt = toFrac(ratioPi);
+        if (ratioTxt === "0") argExact = "0";
+        else if (ratioTxt === "1") argExact = "π";
+        else if (ratioTxt === "-1") argExact = "-π";
+        else argExact = `${ratioTxt}π`;
+    }
+    return argExact;
+}
+
+function formaterModuleSolution(p) {
+    const r2 = p.a*p.a + p.b*p.b;
+    const rootVal = Math.sqrt(r2);
+    if (p.exactMod !== undefined) return p.exactMod;
+    if (Math.abs(rootVal - Math.round(rootVal)) < 0.001) return String(Math.round(rootVal));
+    return `√(${toFrac(r2)})`;
+}
+
+function ordinalRacine(n) {
+    const ordinaux = {
+        1: 'premières',
+        2: 'deuxièmes',
+        3: 'troisièmes',
+        4: 'quatrièmes',
+        5: 'cinquièmes',
+        6: 'sixièmes',
+        7: 'septièmes',
+        8: 'huitièmes',
+        9: 'neuvièmes',
+        10: 'dixièmes',
+        11: 'onzièmes',
+        12: 'douzièmes',
+        13: 'treizièmes',
+        14: 'quatorzièmes',
+        15: 'quinzièmes',
+        16: 'seizièmes',
+        17: 'dix-septièmes',
+        18: 'dix-huitièmes',
+        19: 'dix-neuvièmes',
+        20: 'vingtièmes'
+    };
+    if (n === 2) return 'carrées';
+    if (n === 3) return 'cubiques';
+    if (ordinaux[n]) return ordinaux[n];
+    return `${n}e`;
+}
+
+function afficherSolutionsSolveur(equationTxt = '', typeSolution = 'polynome') {
+    // La même fenêtre sert désormais aux équations polynomiales et aux racines n-ièmes de l'unité.
+    const motif = typeSolution === 'unite' ? /^w\d+$/ : /^sol\d+$/;
+    const solutions = points.filter(p => motif.test(p.name));
+    const modal = document.getElementById('modal-solutions');
+    const equationBox = document.getElementById('solution-equation');
+    const intro = document.getElementById('solutions-intro');
+    const list = document.getElementById('solutions-list');
+    if (!modal || !list || solutions.length === 0) return;
+
+    // Nettoyage préventif avant chaque nouvelle résolution :
+    // la nouvelle équation remplace toujours intégralement l'ancienne.
+    if (equationBox) equationBox.textContent = '';
+    list.innerHTML = '';
+
+    if (equationBox) {
+        equationBox.textContent = `Équation à résoudre : ${equationTxt}`;
+    }
+    if (intro) {
+        intro.textContent = typeSolution === 'unite'
+            ? `Les racines ${ordinalRacine(parseInt(document.getElementById('rn-n')?.value) || 1)} de l’unité sont :`
+            : 'Les solutions de l’équation sont :';
+    }
+
+    list.innerHTML = solutions.map((p, idx) => {
+        const alg = formaterAlgebriqueSolution(p);
+        const mod = formaterModuleSolution(p);
+        const arg = formaterArgumentSolution(p);
+        let trig, exp;
+
+        if (arg === "0") {
+            trig = `z = ${mod} [cos(0) + i sin(0)]`;
+            exp = `z = ${mod}`;
+        } else {
+            trig = `z = ${mod} [cos(${arg}) + i sin(${arg})]`;
+            if (arg.startsWith('-')) exp = `z = ${mod} · e^(-i${arg.substring(1)})`;
+            else exp = `z = ${mod} · e^(i${arg})`;
+        }
+
+        return `<div class="solution-item">
+            <div class="solution-name">Solution ${idx + 1} : ${p.name}</div>
+            <div class="solution-line"><b>Forme algébrique :</b> ${alg}</div>
+            <div class="solution-line"><b>Module :</b> ${mod}</div>
+            <div class="solution-line"><b>Argument :</b> ${arg} rad</div>
+            <div class="solution-line"><b>Forme trigonométrique :</b><br>${trig}</div>
+            <div class="solution-line"><b>Forme exponentielle :</b><br>${exp}</div>
+        </div>`;
+    }).join('');
+
+    modal.style.display = 'block';
+}
+
+    function formaterEquationRacinesUnite(a, b, n) {
+        const zTxt = (Math.abs(a - 1) < 1e-10 && Math.abs(b) < 1e-10) ? '1' : formaterCoefficientComplexe(a, b);
+        return `z^${n} = ${zTxt}`;
+    }
+
+    function calcRn() {
+        saveState();
+        const a = evalMath(document.getElementById('rn-a').value);
+        const b = evalMath(document.getElementById('rn-b').value);
+        const n = parseInt(document.getElementById('rn-n').value) || 1;
+        if (n <= 0) return;
+
+        // Supprime les anciennes racines n-ièmes de l'unité avant chaque nouveau calcul.
+        // Le graphique et la fenêtre récapitulative repartent ainsi d'un état propre.
+        points = points.filter(p => !/^w\d+$/.test(p.name));
+        selIdx = null;
+
+        const rZ = Math.hypot(a, b), thetaZ = Math.atan2(b, a), rR = Math.pow(rZ, 1/n);
+        lastRootRadius = rR; layers.cercle = true;
+
+        // Conservation des valeurs numériques pour le tracé,
+        // mais mémorisation de la forme exacte pour l'affichage.
+        for (let k = 0; k < n; k++) {
+            const ang = (thetaZ + 2 * Math.PI * k) / n;
+            const root = {
+                name: "w" + k,
+                a: rR * Math.cos(ang),
+                b: rR * Math.sin(ang),
+                visible: true,
+                color: "#2ecc71"
+            };
+
+            // Cas particulier : z^n = 1.
+            // Les coordonnées restent numériques pour le tracé, tandis que
+            // les expressions exactes sont conservées pour la fenêtre de solutions.
+            if (Math.abs(a - 1) < 1e-10 && Math.abs(b) < 1e-10) {
+                const angleNum = 2 * k;
+                root.exactRe = k === 0 ? "1" : `cos(${angleNum}π/${n})`;
+                root.exactIm = k === 0 ? "0" : `sin(${angleNum}π/${n})`;
+                // Argument principal : entre -π et π.
+                const principalNum = angleNum >= n ? angleNum - 2 * n : angleNum;
+                root.exactArg = k === 0 ? "0" : `${principalNum}π/${n}`;
+                root.exactMod = "1";
+            } else {
+                // Pour les autres nombres complexes, on applique la reconnaissance
+                // exacte déjà utilisée par le solveur polynomial lorsque c'est fiable.
+                enrichirFormeExacte(root);
+            }
+
+            points.push(root);
+        }
+        updateUI();
+
+        const equationTxt = formaterEquationRacinesUnite(a, b, n);
+        afficherSolutionsSolveur(equationTxt, 'unite');
+    }
+
+
+// ================= TRANSFORMATIONS PLANES =================
+function ouvrirTransformations(type = 'translation') {
+    const modal = document.getElementById('modal-transformations');
+    const select = document.getElementById('transformation-type');
+    if (select) select.value = type;
+    actualiserFormulaireTransformation();
+    if (modal) modal.style.display = 'flex';
+}
+
+function fermerTransformations(event) {
+    if (event && event.target !== document.getElementById('modal-transformations')) return;
+    const modal = document.getElementById('modal-transformations');
+    if (modal) modal.style.display = 'none';
+}
+
+function champTransformation(id, label, value, full = false) {
+    return `<div class="transform-field ${full ? 'transform-full' : ''}">
+        <label for="${id}">${label}</label>
+        <input type="text" id="${id}" value="${value}" autocomplete="off">
+    </div>`;
+}
+
+function champAngleTransformation(id, label, full = false) {
+    return `<div class="transform-field${full ? ' full' : ''}">
+        <label for="${id}">${label}</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <select id="${id}-preset" onchange="choisirAngleTransformation('${id}')" style="flex:1;">
+                <option value="">Choisir un angle…</option>
+                <option value="π/2">π/2</option>
+                <option value="π/4">π/4</option>
+                <option value="π/6">π/6</option>
+                <option value="π/8">π/8</option>
+                <option value="π/10">π/10</option>
+                <option value="π/12">π/12</option>
+                <option value="π/14">π/14</option>
+                <option value="π/16">π/16</option>
+                <option value="π/18">π/18</option>
+                <option value="π/20">π/20</option>
+                <option value="π/3">π/3</option>
+                <option value="2π/3">2π/3</option>
+                <option value="3π/4">3π/4</option>
+                <option value="5π/6">5π/6</option>
+                <option value="π">π</option>
+            </select>
+            <input id="${id}" type="text" placeholder="ou saisir π/2, π/3, 90°…" autocomplete="off" style="flex:1;">
+        </div>
+    </div>`;
+}
+
+function choisirAngleTransformation(id) {
+    const select = document.getElementById(id + '-preset');
+    const input = document.getElementById(id);
+    if (select && input && select.value) input.value = select.value;
+}
+
+function actualiserFormulaireTransformation() {
+    const type = document.getElementById('transformation-type')?.value || 'translation';
+    const fields = document.getElementById('transformation-fields');
+    const result = document.getElementById('transformation-result');
+    if (!fields) return;
+    if (result) { result.style.display = 'none'; result.innerHTML = ''; }
+
+    if (type === 'translation') {
+        fields.innerHTML = `<div class="transform-grid">
+            ${champTransformation('tr-nomA', 'Nom du point antécédent', 'A', true)}
+            ${champTransformation('tr-zA', 'Affixe du point antécédent zA', '', true)}
+            ${champTransformation('tr-nomImage', 'Nom du point image', 'A′', true)}
+            ${champTransformation('tr-u', 'Affixe du vecteur de translation u', '', true)}
+        </div>`;
+    } else if (type === 'homothetie') {
+        fields.innerHTML = `<div class="transform-grid">
+            ${champTransformation('tr-nomA', 'Nom du point antécédent', 'A', true)}
+            ${champTransformation('tr-zA', 'Affixe du point antécédent zA', '', true)}
+            ${champTransformation('tr-nomImage', 'Nom du point image', 'A′', true)}
+            ${champTransformation('tr-zO', 'Affixe du centre zO', '', true)}
+            ${champTransformation('tr-k', 'Rapport réel k', '', true)}
+        </div>`;
+    } else if (type === 'rotation') {
+        fields.innerHTML = `<div class="transform-grid">
+            ${champTransformation('tr-nomA', 'Nom du point antécédent', 'A', true)}
+            ${champTransformation('tr-zA', 'Affixe du point antécédent zA', '', true)}
+            ${champTransformation('tr-nomImage', 'Nom du point image', 'A′', true)}
+            ${champTransformation('tr-zO', 'Affixe du centre zO', '', true)}
+            ${champAngleTransformation('tr-theta', 'Angle θ', true)}
+        </div>`;
+    } else {
+        fields.innerHTML = `<div class="transform-grid">
+            ${champTransformation('tr-nomA', 'Nom du point antécédent', 'A', true)}
+            ${champTransformation('tr-zA', 'Affixe du point antécédent zA', '', true)}
+            ${champTransformation('tr-nomImage', 'Nom du point image', 'A′', true)}
+            ${champTransformation('tr-zO', 'Affixe du centre zO', '', true)}
+            ${champTransformation('tr-k', 'Rapport réel k', '', false)}
+            ${champAngleTransformation('tr-theta', 'Angle θ', false)}
+        </div>`;
+    }
+}
+
+function normaliserExpressionMath(expr) {
+    let s = String(expr ?? '').trim()
+        .replace(/,/g, '.')
+        .replace(/−/g, '-')
+        .replace(/π/gi, 'Math.PI')
+        .replace(/racine\s*carrée?/gi, 'sqrt')
+        .replace(/racine/gi, 'sqrt')
+        .replace(/√/g, 'sqrt')
+        .replace(/\s+/g, '');
+
+    // Autorise SQ, SQR ou SQRT comme saisie intelligente.
+    s = s.replace(/\bsq(?:r|rt)?(?=\d|\()/gi, 'sqrt');
+
+    // sqrt(2), sqrt(2/3) -> Math.sqrt(2) et sqrt2 -> Math.sqrt(2)
+    s = s.replace(/sqrt\(/gi, 'Math.sqrt(');
+    s = s.replace(/sqrt(?=\d)/gi, 'Math.sqrt(');
+    // Ferme automatiquement les racines simples : sqrt2 -> sqrt(2)
+    s = s.replace(/Math\.sqrt\((-?(?:\d+(?:\.\d+)?)(?:\/\d+(?:\.\d+)?)?)\)/g, 'Math.sqrt($1)');
+
+    // Multiplication implicite : 2sqrt(3), 2π, )sqrt(2), 2i.
+    s = s.replace(/(\d|\))(?=Math\.sqrt)/g, '$1*');
+    s = s.replace(/(\d|\))(?=Math\.PI)/g, '$1*');
+    s = s.replace(/(Math\.sqrt\([^)]*\)|Math\.PI)(?=Math\.sqrt)/g, '$1*');
+
+    return s;
+}
+
+function evalExpressionRenforcee(expr) {
+    const s = normaliserExpressionMath(expr);
+    if (!s) return 0;
+    const value = Function('"use strict"; return (' + s + ');')();
+    if (!Number.isFinite(value)) throw new Error('Expression non numérique.');
+    return value;
+}
+
+function parseComplexTransformation(expr) {
+    const s = normaliserExpressionMath(expr);
+    if (!s) return {re:0, im:0};
+
+    // Forme pure imaginaire : i, -i, 2i, sqrt(2)i, 2sqrt(3)i...
+    if (/^(.+)i$/i.test(s)) {
+        const imagOnly = s.slice(0, -1);
+        try {
+            const im = evalExpressionRenforcee(imagOnly || '1');
+            if (Number.isFinite(im)) return {re:0, im};
+        } catch(e) {}
+    }
+
+    // Décomposition générale : dernier + ou - hors parenthèses avant i.
+    if (s.includes('i')) {
+        const imagPos = s.lastIndexOf('i');
+        const imagPart = s.slice(0, imagPos);
+        let split = -1, depth = 0;
+        for (let j = imagPart.length - 1; j >= 0; j--) {
+            const ch = imagPart[j];
+            if (ch === ')') depth++;
+            else if (ch === '(') depth--;
+            else if ((ch === '+' || ch === '-') && depth === 0 && j > 0) {
+                split = j; break;
+            }
+        }
+        try {
+            if (split > 0) {
+                const re = evalExpressionRenforcee(imagPart.slice(0, split));
+                let imTxt = imagPart.slice(split);
+                if (imTxt === '+') imTxt = '1';
+                if (imTxt === '-') imTxt = '-1';
+                const im = evalExpressionRenforcee(imTxt);
+                return {re, im};
+            } else {
+                let imTxt = imagPart;
+                if (imTxt === '+' || imTxt === '') imTxt = '1';
+                if (imTxt === '-') imTxt = '-1';
+                return {re:0, im:evalExpressionRenforcee(imTxt)};
+            }
+        } catch(e) {}
+    }
+
+    try {
+        return {re:evalExpressionRenforcee(s), im:0};
+    } catch(e) {
+        throw new Error(`Affixe complexe invalide : ${expr}`);
+    }
+}
+
+function parseAngleTransformation(expr) {
+    // Accepte degrés, radians décimaux et expressions usuelles en π.
+    // Exemples : π/3, 2π/3, 3π/8, -2π/3, 2π, 120°.
+    let s = String(expr ?? '').trim().toLowerCase().replace(/,/g,'.').replace(/−/g,'-').replace(/\s+/g,'');
+    if (!s) throw new Error('Angle non renseigné.');
+    if (s.endsWith('°')) {
+        const deg = parseFloat(s.slice(0,-1));
+        if (!Number.isFinite(deg)) throw new Error('Angle en degrés invalide.');
+        return deg * Math.PI / 180;
+    }
+    s = s.replace(/π/g,'Math.PI').replace(/pi/g,'Math.PI');
+    // Multiplication implicite : 2π/3 devient 2*Math.PI/3.
+    s = s.replace(/(\d|\))(?=Math\.PI)/g, '$1*');
+    try {
+        const v = Function('"use strict"; return ('+s+');')();
+        if (!Number.isFinite(v)) throw new Error();
+        return v;
+    } catch(e) { throw new Error(`Angle invalide : ${expr}`); }
+}
+
+function formaterComplexTransformation(re, im) {
+    const rr = Math.abs(re) < 1e-10 ? 0 : re;
+    const ii = Math.abs(im) < 1e-10 ? 0 : im;
+    if (ii === 0) return toFrac(rr);
+    const imTxt = toFrac(Math.abs(ii));
+    const imSigned = Math.abs(ii - 1) < 1e-10 ? 'i' : imTxt + 'i';
+    if (rr === 0) return ii < 0 ? '-' + imSigned : imSigned;
+    return `${toFrac(rr)} ${ii >= 0 ? '+ ' : '- '}${imSigned}`;
+}
+
+function trouverNomPointTransformation(prefix) {
+    let n = 1;
+    while (points.some(p => p.name === prefix + n)) n++;
+    return prefix + n;
+}
+
+function calculerEtAjouterTransformation(type) {
+    const historiqueAvant = history.length;
+    saveState();
+    try {
+        const zA = parseComplexTransformation(document.getElementById('tr-zA')?.value);
+        let zImg, formule, titre, parametres = {};
+
+        if (type === 'translation') {
+            const u = parseComplexTransformation(document.getElementById('tr-u')?.value);
+            zImg = {re:zA.re + u.re, im:zA.im + u.im};
+            formule = `z<sub>A′</sub> = z<sub>A</sub> + u`;
+            titre = 'Translation';
+            parametres = {u};
+        } else if (type === 'homothetie') {
+            const zO = parseComplexTransformation(document.getElementById('tr-zO')?.value);
+            const k = evalMath(document.getElementById('tr-k')?.value);
+            if (!Number.isFinite(k)) throw new Error('Le rapport k doit être un nombre réel.');
+            zImg = {re:zO.re + k*(zA.re-zO.re), im:zO.im + k*(zA.im-zO.im)};
+            formule = `z<sub>A′</sub> = z<sub>O</sub> + k(z<sub>A</sub> − z<sub>O</sub>)`;
+            titre = 'Homothétie';
+            parametres = {zO,k};
+        } else if (type === 'rotation') {
+            const zO = parseComplexTransformation(document.getElementById('tr-zO')?.value);
+            const theta = parseAngleTransformation(document.getElementById('tr-theta')?.value);
+            const c = Math.cos(theta), s = Math.sin(theta);
+            const x = zA.re-zO.re, y = zA.im-zO.im;
+            zImg = {re:zO.re + c*x - s*y, im:zO.im + s*x + c*y};
+            formule = `z<sub>A′</sub> = z<sub>O</sub> + e<sup>iθ</sup>(z<sub>A</sub> − z<sub>O</sub>)`;
+            titre = 'Rotation';
+            parametres = {zO,theta};
+        } else {
+            const zO = parseComplexTransformation(document.getElementById('tr-zO')?.value);
+            const k = evalMath(document.getElementById('tr-k')?.value);
+            const theta = parseAngleTransformation(document.getElementById('tr-theta')?.value);
+            if (!Number.isFinite(k)) throw new Error('Le rapport k doit être un nombre réel.');
+            const c = Math.cos(theta), s = Math.sin(theta);
+            const x = zA.re-zO.re, y = zA.im-zO.im;
+            zImg = {re:zO.re + k*(c*x - s*y), im:zO.im + k*(s*x + c*y)};
+            formule = `z<sub>A′</sub> = z<sub>O</sub> + ke<sup>iθ</sup>(z<sub>A</sub> − z<sub>O</sub>)`;
+            titre = 'Similitude plane directe';
+            parametres = {zO,k,theta};
+        }
+
+        const nomA = String(document.getElementById('tr-nomA')?.value || '').trim();
+        if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9_]*$/.test(nomA)) {
+            throw new Error('Le nom du point doit commencer par une lettre (ex. A, M, P1).');
+        }
+        const couleur = document.getElementById('globalColor')?.value || '#6c5ce7';
+        const existant = points.find(p => p.name === nomA);
+        if (existant) {
+            if (Math.abs(existant.a - zA.re) > 1e-8 || Math.abs(existant.b - zA.im) > 1e-8) {
+                throw new Error(`Le point ${nomA} existe déjà avec une autre affixe.`);
+            }
+        } else {
+            points.push({name:nomA, a:zA.re, b:zA.im, visible:true, color:couleur});
+        }
+
+        const nomImage = String(document.getElementById('tr-nomImage')?.value || '').trim();
+        if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9_′']*$/.test(nomImage)) {
+            throw new Error('Le nom du point image doit commencer par une lettre (ex. A′, B, M′, P1).');
+        }
+        if (nomImage === nomA) throw new Error('Le point image doit avoir un nom différent du point antécédent.');
+        if (points.some(p => p.name === nomImage)) throw new Error(`Le point ${nomImage} existe déjà. Choisissez un autre nom pour le point image.`);
+        points.push({name:nomImage, a:zImg.re, b:zImg.im, visible:true, color:couleur});
+
+        updateUI();
+        return {type, zA, zImg, nomA, nomImage, titre, formule, parametres, historiqueAvant};
+    } catch(e) {
+        if (history.length > historiqueAvant) history.pop();
+        throw e;
+    }
+}
+
+function afficherResultatTransformation(data) {
+    const result = document.getElementById('transformation-result');
+    if (!result) return;
+    result.innerHTML = `<b>${data.titre}</b><br>
+        Antécédent : <b>${data.nomA} : z<sub>${data.nomA}</sub> = ${formaterComplexTransformation(data.zA.re,data.zA.im)}</b><br>
+        Image : <b>${data.nomImage} : z<sub>${data.nomImage}</sub> = ${formaterComplexTransformation(data.zImg.re,data.zImg.im)}</b>
+        <div class="transform-formula">${data.formule}</div>`;
+    result.style.display = 'block';
+}
+
+let transformationAnimation = null;
+
+function appliquerTransformation(animer = false) {
+    const type = document.getElementById('transformation-type')?.value || 'translation';
+    try {
+        const data = calculerEtAjouterTransformation(type);
+        afficherResultatTransformation(data);
+        if (animer) {
+            const modal = document.getElementById('modal-transformations');
+            if (modal) modal.style.display = 'none';
+            lancerAnimationTransformation(data);
+        }
+    } catch(e) {
+        alert(e.message || 'Impossible d’appliquer la transformation.');
+    }
+}
+
+function animerTransformation() {
+    appliquerTransformation(true);
+}
+
+function lancerAnimationTransformation(data) {
+    if (transformationAnimation?.raf) cancelAnimationFrame(transformationAnimation.raf);
+    const controls = document.getElementById('transformation-animation-controls');
+    const title = document.getElementById('anim-title');
+    if (controls) controls.style.display = 'flex';
+    if (title) title.textContent = `🎬 ${data.titre} : ${data.nomA} → ${data.nomImage}`;
+
+    transformationAnimation = {
+        data, progress:0, playing:true, raf:null, lastTime:performance.now(), duration:3600
+    };
+    const slider = document.getElementById('anim-progress');
+    if (slider) slider.value = 0;
+    draw();
+    transformationAnimation.raf = requestAnimationFrame(boucleAnimationTransformation);
+}
+
+function positionAnimationTransformation(t) {
+    const d = transformationAnimation?.data;
+    if (!d) return null;
+    const p = Math.max(0, Math.min(1, Number(t)));
+    const {zA, parametres, type} = d;
+    if (type === 'translation') {
+        return {re:zA.re + p*parametres.u.re, im:zA.im + p*parametres.u.im};
+    }
+    const zO = parametres.zO;
+    const x = zA.re-zO.re, y = zA.im-zO.im;
+    if (type === 'homothetie') {
+        const k = 1 + p*(parametres.k-1);
+        return {re:zO.re+k*x, im:zO.im+k*y};
+    }
+    const theta = parametres.theta*p;
+    const k = type === 'similitude' ? 1 + p*(parametres.k-1) : 1;
+    const c=Math.cos(theta), s=Math.sin(theta);
+    return {re:zO.re+k*(c*x-s*y), im:zO.im+k*(s*x+c*y)};
+}
+
+function boucleAnimationTransformation(now) {
+    const a = transformationAnimation;
+    if (!a) return;
+    if (a.playing) {
+        a.progress += (now-a.lastTime)/a.duration;
+        if (a.progress >= 1) { a.progress=1; a.playing=false; }
+    }
+    a.lastTime=now;
+    draw();
+    const slider=document.getElementById('anim-progress');
+    if(slider) slider.value=Math.round(a.progress*100);
+    if(a.playing) a.raf=requestAnimationFrame(boucleAnimationTransformation);
+    else a.raf=null;
+}
+
+function lectureAnimationTransformation() {
+    if (!transformationAnimation) return;
+    transformationAnimation.playing=true;
+    transformationAnimation.lastTime=performance.now();
+    if(!transformationAnimation.raf) transformationAnimation.raf=requestAnimationFrame(boucleAnimationTransformation);
+}
+
+function pauseAnimationTransformation() {
+    if (!transformationAnimation) return;
+    transformationAnimation.playing=false;
+    if(transformationAnimation.raf) cancelAnimationFrame(transformationAnimation.raf);
+    transformationAnimation.raf=null;
+    draw();
+}
+
+function rejouerAnimationTransformation() {
+    if (!transformationAnimation) return;
+    transformationAnimation.progress=0;
+    transformationAnimation.playing=true;
+    transformationAnimation.lastTime=performance.now();
+    if(transformationAnimation.raf) cancelAnimationFrame(transformationAnimation.raf);
+    transformationAnimation.raf=requestAnimationFrame(boucleAnimationTransformation);
+}
+
+function fermerAnimationTransformation() {
+    if(transformationAnimation?.raf) cancelAnimationFrame(transformationAnimation.raf);
+    transformationAnimation=null;
+    const controls=document.getElementById('transformation-animation-controls');
+    if(controls) controls.style.display='none';
+    draw();
+}
+
+function creerConjugue() {
+    if (selIdx === null) {
+        alert("Sélectionnez d'abord un point (en cliquant dessus) pour créer son conjugué.");
+        return;
+    }
+
+    saveState();
+    const pOriginal = points[selIdx];
+    
+    // Le conjugué garde la même partie réelle (a) mais inverse la partie imaginaire (b)
+    const nouveauPoint = {
+        name: pOriginal.name + "̄",
+        a: pOriginal.a,
+        b: -pOriginal.b, // Inversion du signe
+        visible: true,
+        color: pOriginal.color
+    };
+
+    points.push(nouveauPoint);
+    updateUI();
+}
+
+function retourAccueil() {
+    localStorage.removeItem('geoActive_V31');
+    localStorage.removeItem('labo_maitre_session_token');
+    const verrou = document.getElementById('verrou-ecran');
+    const app = document.getElementById('app-interface');
+    if (verrou) verrou.style.display = 'flex';
+    if (app) app.style.display = 'none';
+    const pin = document.getElementById('pass-input'); if (pin) pin.value = '';
+    laboStatus('Application verrouillée. Saisissez votre code PIN pour vérifier à nouveau la licence.');
+}
+    function addZ() { 
+    saveState(); 
+    const re = evalMath(document.getElementById('z-re').value);
+    const im = evalMath(document.getElementById('z-im').value);
+    points.push({ name: "z"+(points.length+1), a: re, b: im, visible: true, color: document.getElementById('globalColor').value }); 
+    updateUI(); 
+   }
+    function updateUI() {
+        const list = document.getElementById('p-list'); list.innerHTML = "";
+        points.forEach((p, i) => {
+            let pointTxt;
+            if (p.exactRe !== undefined && p.exactIm !== undefined) {
+                if (p.exactIm === "0") pointTxt = p.exactRe;
+                else pointTxt = `${p.exactRe} ${p.exactIm.startsWith('-') ? '- ' + p.exactIm.substring(1) : '+ ' + p.exactIm}i`;
+            } else if (Math.abs(p.b) < 1e-10) {
+                pointTxt = toFrac(p.a);
+            } else if (Math.abs(p.a) < 1e-10) {
+                pointTxt = `${toFrac(p.b)}i`;
+            } else {
+                pointTxt = `${toFrac(p.a)} ${p.b >= 0 ? '+ ' + toFrac(p.b) : '- ' + toFrac(Math.abs(p.b))}i`;
+            }
+            list.innerHTML += `<div class="point-card"><b>${p.name}</b> ${pointTxt}
+            <div style="margin-top:5px">
+            <button onclick="points[${i}].visible = !points[${i}].visible; draw();" class="tool-btn">${p.visible?'👁️':'🚫'}</button>
+            <button onclick="showDetails(${i})" style="background:var(--primary); color:white" class="tool-btn">ℹ️</button>
+            <button onclick="points.splice(${i},1); updateUI();" class="tool-btn">🗑️</button>
+            </div></div>`;
+        });
+        draw();
+    }
+    function evalMath(expr) {
+    try {
+        return evalExpressionRenforcee(expr);
+    } catch (e) {
+        return parseFloat(String(expr).replace(',', '.')) || 0;
+    }
+}
+
+// ================= SAISIE MATHÉMATIQUE INTELLIGENTE =================
+// Disponible dans les affixes, coefficients, parties Re/Im et champs des transformations.
+let suggestionMathActive = null;
+
+function installerSuggestionMath(input) {
+    if (!input || input.dataset.mathSuggestionInstalled === '1') return;
+    if (input.id === 'pass-input' || input.type === 'color' || input.type === 'range' || input.type === 'number') return;
+    input.dataset.mathSuggestionInstalled = '1';
+
+    input.addEventListener('input', () => {
+        const value = input.value;
+        const pos = input.selectionStart ?? value.length;
+        const avant = value.slice(0, pos);
+        const match = avant.match(/(?:^|[+\-*/(=\d.)])\s*(sq(?:r|rt)?)(?=$|\d|\()/i);
+        if (match) {
+            afficherSuggestionMath(input, pos, match[1]);
+        } else {
+            fermerSuggestionMath(input);
+        }
+    });
+
+    input.addEventListener('keydown', (ev) => {
+        if (!suggestionMathActive || suggestionMathActive.input !== input) return;
+        if (ev.key === 'Tab' || ev.key === 'Enter' || ev.key === 'ArrowRight') {
+            ev.preventDefault();
+            accepterSuggestionMath();
+        } else if (ev.key === 'Escape') {
+            fermerSuggestionMath(input);
+        }
+    });
+}
+
+function afficherSuggestionMath(input, pos, texte) {
+    fermerSuggestionMath();
+    const rect = input.getBoundingClientRect();
+    const box = document.createElement('div');
+    box.textContent = '√  /  SQRT( )';
+    box.title = 'Appuyez sur Tab ou Entrée pour insérer √';
+    Object.assign(box.style, {
+        position:'fixed', left:Math.min(rect.left, window.innerWidth-180)+'px',
+        top:(rect.bottom+4)+'px', zIndex:'100000', padding:'6px 10px',
+        background:'#ffffff', border:'1px solid #74b9ff', borderRadius:'7px',
+        boxShadow:'0 3px 10px rgba(0,0,0,.18)', cursor:'pointer',
+        fontWeight:'800', color:'#2d3436', fontSize:'13px'
+    });
+    box.onclick = () => accepterSuggestionMath();
+    document.body.appendChild(box);
+    suggestionMathActive = {input, pos, texte, box};
+}
+
+function accepterSuggestionMath() {
+    if (!suggestionMathActive) return;
+    const {input, pos, texte} = suggestionMathActive;
+    const before = input.value.slice(0, pos);
+    const after = input.value.slice(pos);
+    const start = before.search(/(?:^|[+\-*/(=\d.)])\s*sq(?:r|rt)?$/i);
+    if (start < 0) { fermerSuggestionMath(input); return; }
+    const prefix = before.slice(0, start);
+    const separator = before.slice(start).match(/^([+\-*/(=]\s*)?/)?.[0] || '';
+    const replacement = separator + 'sqrt(';
+    input.value = prefix + replacement + after;
+    const newPos = prefix.length + replacement.length;
+    input.setSelectionRange(newPos, newPos);
+    fermerSuggestionMath(input);
+    input.dispatchEvent(new Event('input', {bubbles:true}));
+}
+
+function fermerSuggestionMath(input = null) {
+    if (!suggestionMathActive) return;
+    if (input && suggestionMathActive.input !== input) return;
+    suggestionMathActive.box?.remove();
+    suggestionMathActive = null;
+}
+
+function installerToutesLesSaisiesMathematiques() {
+    document.querySelectorAll('input[type="text"]').forEach(installerSuggestionMath);
+}
+
+document.addEventListener('input', (ev) => {
+    if (ev.target?.matches?.('input[type="text"]')) installerSuggestionMath(ev.target);
+}, true);
+
+document.addEventListener('focusin', (ev) => {
+    if (ev.target?.matches?.('input[type="text"]')) installerSuggestionMath(ev.target);
+}, true);
+
+window.addEventListener('DOMContentLoaded', installerToutesLesSaisiesMathematiques);
+
+// --- UTILITAIRE : CONVERSION EN FRACTION ---
+    function toFrac(x) {
+    if (Math.abs(x) < 0.001) return "0";
+    const sign = x < 0 ? "-" : "";
+    const val = Math.abs(x);
+    const sq = val * val;
+
+    // 1. Test des radicaux usuels (√2/2, √3/2, √2, √3)
+    const radicals = [
+        { v: 0.5, txt: "√2/2" },   // (sqrt(2)/2)^2 = 0.5
+        { v: 0.75, txt: "√3/2" },  // (sqrt(3)/2)^2 = 0.75
+        { v: 2, txt: "√2" },       // (sqrt(2))^2 = 2
+        { v: 3, txt: "√3" }        // (sqrt(3))^2 = 3
+    ];
+
+    for (let r of radicals) {
+        if (Math.abs(sq - r.v) < 0.002) return sign + r.txt;
+    }
+
+    // 2. Combinaisons exactes "entier ± radical/dénominateur".
+    // Exemple : 1 + √2/2 = (2 + √2)/2.
+    const combinaisonsRadicales = [
+        { radical: Math.sqrt(2), d: 2, maxEntier: 8 },
+        { radical: Math.sqrt(3), d: 2, maxEntier: 8 },
+        { radical: Math.sqrt(5), d: 2, maxEntier: 8 },
+        { radical: Math.sqrt(2), d: 4, maxEntier: 8 },
+        { radical: Math.sqrt(3), d: 4, maxEntier: 8 }
+    ];
+    for (const c of combinaisonsRadicales) {
+        for (let entier = 0; entier <= c.maxEntier; entier++) {
+            const candidats = [
+                { v: entier + c.radical / c.d, txt: entier === 0 ? `√2/${c.d}` : `(${entier * c.d} + √2)/${c.d}` },
+                { v: entier - c.radical / c.d, txt: entier === 0 ? `-√2/${c.d}` : `(${entier * c.d} - √2)/${c.d}` }
+            ];
+            // Adapter √3/√5 dans le texte.
+            const racine = c.radical === Math.sqrt(3) ? '√3' : (c.radical === Math.sqrt(5) ? '√5' : '√2');
+            for (const cand of candidats) {
+                if (Math.abs(val - Math.abs(cand.v)) < 0.001) {
+                    let txt = cand.txt.replace(/√2/g, racine);
+                    return sign + txt;
+                }
+            }
+        }
+    }
+
+    // 3. Test des nombres entiers
+    if (Math.abs(val - Math.round(val)) < 0.001) return sign + Math.round(val).toString();
+
+    // 4. Test des fractions simples (dénominateur jusqu'à 12)
+    for (let d = 2; d <= 12; d++) {
+        let n = Math.round(val * d);
+        if (Math.abs(val - n / d) < 0.001) {
+            return sign + n + "/" + d;
+        }
+    }
+
+    // 5. Par défaut : 3 décimales
+    return x.toFixed(3);
+}
+
+function ouvrirAide() {
+    document.getElementById('modal-aide').style.display = 'block';
+}
+
+function fermerAide() {
+    document.getElementById('modal-aide').style.display = 'none';
+}
+    function enrichirFormeExacte(p) {
+    const eps = 0.001;
+    const a = Math.abs(p.a) < 1e-10 ? 0 : p.a;
+    const b = Math.abs(p.b) < 1e-10 ? 0 : p.b;
+    const r = Math.hypot(a, b);
+
+    // Partie réelle et imaginaire : réutilise l'affichage exact existant.
+    p.exactRe = toFrac(a);
+    p.exactIm = toFrac(b);
+
+    if (r < 1e-10) {
+        p.exactMod = "0";
+        p.exactArg = "0";
+        return;
+    }
+
+    // Reconnaissance prudente du module parmi les valeurs usuelles.
+    const modules = [
+        [1, "1"], [Math.sqrt(2), "√2"], [Math.sqrt(3), "√3"],
+        [2, "2"], [Math.sqrt(5), "√5"], [3, "3"]
+    ];
+    for (const [v, txt] of modules) {
+        if (Math.abs(r - v) < eps) { p.exactMod = txt; break; }
+    }
+
+    // Reconnaissance de l'argument principal dans les angles usuels.
+    // Cela évite d'inventer une fraction en π à partir d'une approximation.
+    const theta = Math.atan2(b, a);
+    const angleTable = [
+        [0, "0"], [30, "π/6"], [45, "π/4"], [60, "π/3"],
+        [90, "π/2"], [120, "2π/3"], [135, "3π/4"], [150, "5π/6"],
+        [180, "π"], [210, "-5π/6"], [225, "-3π/4"], [240, "-2π/3"],
+        [270, "-π/2"], [300, "-π/3"], [315, "-π/4"], [330, "-π/6"]
+    ];
+    let deg = theta * 180 / Math.PI;
+    if (deg < 0) deg += 360;
+    for (const [d, txt] of angleTable) {
+        const distance = Math.abs(deg - d);
+        if (distance < 0.08 || Math.abs(distance - 360) < 0.08) {
+            p.exactArg = txt;
+            break;
+        }
+    }
+}
+
+function showDetails(i) {
+        const p = points[i];
+        
+        // 1. Forme algébrique : utiliser la forme exacte mémorisée
+        // pour les racines de z^n = 1 afin de ne jamais afficher cos/sin en décimal.
+        const reExact = p.exactRe !== undefined ? p.exactRe : toFrac(p.a);
+        const imAbsExact = p.exactIm !== undefined ? p.exactIm : toFrac(Math.abs(p.b));
+        let algebraicTxt;
+        if (imAbsExact === "0") {
+            algebraicTxt = reExact;
+        } else if (p.exactIm !== undefined) {
+            algebraicTxt = `${reExact} + ${imAbsExact}i`;
+        } else {
+            algebraicTxt = `${reExact} ${p.b >= 0 ? '+ ' + imAbsExact : '- ' + imAbsExact}i`;
+        }
+        document.getElementById('det-alg').innerHTML = `<b>Forme Algébrique :</b> ${algebraicTxt}`;
+
+        // 2. Module exact
+        const r2 = p.a*p.a + p.b*p.b;
+        const rootVal = Math.sqrt(r2);
+        let modTxt = p.exactMod !== undefined ? p.exactMod : ((Math.abs(rootVal - Math.round(rootVal)) < 0.001) ? Math.round(rootVal).toString() : `√(${toFrac(r2)})`);
+        document.getElementById('det-mod').innerHTML = `<b>Module |z| :</b> ${modTxt}`;
+
+        // 3. Argument exact (en π)
+        const argRad = Math.atan2(p.b, p.a);
+        const ratioPi = argRad / Math.PI;
+
+        // L'argument est toujours affiché comme un multiple exact de π.
+        // Exemples : 3π/4 rad, -3π/4 rad, π/2 rad, π rad.
+        let argExact;
+        if (p.exactArg !== undefined) {
+            argExact = p.exactArg;
+        } else {
+            const ratioTxt = toFrac(ratioPi);
+            if (ratioTxt === "0") {
+                argExact = "0";
+            } else if (ratioTxt === "1") {
+                argExact = "π";
+            } else if (ratioTxt === "-1") {
+                argExact = "-π";
+            } else {
+                argExact = `${ratioTxt}π`;
+            }
+        }
+        const argDisplay = `${argExact} rad`;
+        document.getElementById('det-arg').innerHTML = `<b>Argument θ :</b> ${argDisplay}`;
+
+        // 4. Formes trigonométrique et exponentielle
+        let trigTxt, expTxt;
+        if (p.exactArg !== undefined) {
+            if (p.exactArg === "0") {
+                trigTxt = `z = ${modTxt} [cos(0) + i sin(0)]`;
+                expTxt = `z = ${modTxt}`;
+            } else {
+                const thetaTxt = p.exactArg;
+                trigTxt = `z = ${modTxt} [cos(${thetaTxt}) + i sin(${thetaTxt})]`;
+                if (thetaTxt.startsWith("-")) {
+                    expTxt = `z = ${modTxt} · e^(-i${thetaTxt.substring(1)})`;
+                } else {
+                    expTxt = `z = ${modTxt} · e^(i${thetaTxt})`;
+                }
+            }
+        } else {
+            // argExact contient déjà π lorsque nécessaire (ex. 3π/4).
+            // Ne surtout pas ajouter un second π ici.
+            const argValue = argExact;
+            if (argValue === "0") {
+                trigTxt = `z = ${modTxt} [cos(0) + i sin(0)]`;
+                expTxt = `z = ${modTxt}`;
+            } else if (argValue.startsWith("-")) {
+                trigTxt = `z = ${modTxt} [cos(${argValue}) + i sin(${argValue})]`;
+                const positiveArg = argValue.substring(1);
+                expTxt = `z = ${modTxt} · e^(-i${positiveArg})`;
+            } else {
+                trigTxt = `z = ${modTxt} [cos(${argValue}) + i sin(${argValue})]`;
+                expTxt = `z = ${modTxt} · e^(i${argValue})`;
+            }
+        }
+
+        document.getElementById('det-trig').innerText = trigTxt;
+        document.getElementById('det-exp').innerText = expTxt;
+        document.getElementById('modal-details').style.display = 'flex';
+    }
+    
+ function setMode(m) {
+    // Si on clique sur le mode déjà actif, on revient en mode normal
+    mode = (mode === m) ? 'normal' : m;
+    selIdx = null;
+
+    // Mise à jour visuelle de TOUS les boutons
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.classList.remove('active-mode');
+        
+        // On allume le bouton correspondant au mode choisi
+        if (mode === 'circle_cp' && btn.innerText.includes("Cercle (C-P)")) btn.classList.add('active-mode');
+        if (mode === 'segment' && btn.innerText.includes("Segment")) btn.classList.add('active-mode');
+        if (mode === 'midpoint' && btn.innerText.includes("Milieu")) btn.classList.add('active-mode');
+    });
+
+    draw();
+}
+    function togglePanel(id) { const p=document.getElementById(id); p.style.display=(p.style.display==='block'?'none':'block'); }
+    function toggleLayer(l) { layers[l]=!layers[l]; draw(); }
+    function zoom(f) { scale*=f; draw(); }
+    function resetView() {
+    scale = 50; // On remet le zoom par défaut
+    ox = canvas.width / 2; // On recentre horizontalement
+    oy = canvas.height / 2; // On recentre verticalement
+    draw(); // On redessine tout
+}
+    function resetAll() { if(confirm("Effacer tout ?")) { saveState(); points=[]; links=[]; customCircles=[]; polygonLinks=[]; polygonVisible=false; lastRootRadius=0; updateUI(); } }
+
+
+    function tracerPolygone() {
+        if (polygonVisible) {
+            // Deuxième clic : masquer le polygone sans supprimer les points.
+            polygonVisible = false;
+            updateUI();
+            return;
+        }
+
+        // Si des racines n-ièmes sont affichées, le polygone est formé
+        // uniquement avec ces racines, dans leur ordre circulaire.
+        let indices = points
+            .map((p, i) => ({p, i}))
+            .filter(x => x.p.visible && /^w\d+$/.test(x.p.name))
+            .sort((x, y) => parseInt(x.p.name.slice(1)) - parseInt(y.p.name.slice(1)))
+            .map(x => x.i);
+
+        // Sinon, on utilise les points actuellement visibles.
+        if (indices.length < 2) {
+            indices = points.map((p, i) => p.visible ? i : -1).filter(i => i >= 0);
+        }
+
+        if (indices.length < 2) {
+            alert("Il faut au moins 2 points pour tracer un polygone.");
+            return;
+        }
+
+        saveState();
+        polygonLinks = [];
+        for (let i = 0; i < indices.length; i++) {
+            polygonLinks.push([indices[i], indices[(i + 1) % indices.length]]);
+        }
+        polygonVisible = true;
+        updateUI();
+    }
+
+    let angleSelectionne = null;
+const anglesData = [
+    {d:0, r:"0", c:"1", s:"0"}, {d:30, r:"π/6", c:"√3/2", s:"1/2"},
+    {d:45, r:"π/4", c:"√2/2", s:"√2/2"}, {d:60, r:"π/3", c:"1/2", s:"√3/2"},
+    {d:90, r:"π/2", c:"0", s:"1"}, {d:120, r:"2π/3", c:"-1/2", s:"√3/2"},
+    {d:135, r:"3π/4", c:"-√2/2", s:"√2/2"}, {d:150, r:"5π/6", c:"-√3/2", s:"1/2"},
+    {d:180, r:"π", c:"-1", s:"0"}, {d:210, r:"7π/6", c:"-√3/2", s:"-1/2"},
+    {d:225, r:"5π/4", c:"-√2/2", s:"-√2/2"}, {d:240, r:"4π/3", c:"-1/2", s:"-√3/2"},
+    {d:270, r:"3π/2", c:"0", s:"-1"}, {d:300, r:"5π/3", c:"1/2", s:"-√3/2"},
+    {d:315, r:"7π/4", c:"√2/2", s:"-√2/2"}, {d:330, r:"11π/6", c:"√3/2", s:"-1/2"}
+];
+
+function ouvrirMasterTrigo() {
+    document.getElementById('modal-trigo').style.display = 'flex';
+    const tbody = document.getElementById('trigo-body');
+    tbody.innerHTML = "";
+    anglesData.forEach(a => {
+        let row = document.createElement('tr');
+        row.innerHTML = `<td>${a.d}°</td><td>${a.r}</td><td>${a.c}</td><td>${a.s}</td>`;
+        row.onmouseover = () => { angleSelectionne = a.d; dessinerCercleTrigo(); };
+        row.onmouseout = () => { angleSelectionne = null; dessinerCercleTrigo(); };
+        tbody.appendChild(row);
+    });
+    dessinerCercleTrigo();
+}
+
+function dessinerCercleTrigo() {
+    const c = document.getElementById('trigoCanvas');
+    const tctx = c.getContext('2d');
+    const mid = 225, r = 170;
+    tctx.clearRect(0,0,450,450);
+    
+    // Axes
+    tctx.strokeStyle = "#eee"; tctx.beginPath();
+    tctx.moveTo(0,mid); tctx.lineTo(450,mid); tctx.moveTo(mid,0); tctx.lineTo(mid,450); tctx.stroke();
+
+    // Cercle
+    tctx.strokeStyle = "#333"; tctx.lineWidth = 2;
+    tctx.beginPath(); tctx.arc(mid, mid, r, 0, Math.PI*2); tctx.stroke();
+
+    anglesData.forEach(a => {
+        const rad = -a.d * Math.PI / 180;
+        const x = mid + r * Math.cos(rad);
+        const y = mid + r * Math.sin(rad);
+        const focus = (angleSelectionne === a.d);
+
+        if(focus) {
+            tctx.strokeStyle = "#6c5ce7"; tctx.lineWidth = 3;
+            tctx.beginPath(); tctx.moveTo(mid,mid); tctx.lineTo(x,y); tctx.stroke();
+            // Projections
+            tctx.setLineDash([5,5]);
+            tctx.strokeStyle = "#e67e22"; tctx.beginPath(); tctx.moveTo(x,y); tctx.lineTo(x,mid); tctx.stroke();
+            tctx.strokeStyle = "#2ecc71"; tctx.beginPath(); tctx.moveTo(x,y); tctx.lineTo(mid,y); tctx.stroke();
+            tctx.setLineDash([]);
+        }
+        tctx.fillStyle = focus ? "#6c5ce7" : "#ccc";
+        tctx.beginPath(); tctx.arc(x,y, focus ? 6 : 4, 0, 7); tctx.fill();
+        
+        if(focus || a.d % 90 === 0) {
+            tctx.fillStyle = "black"; tctx.font = "12px Arial";
+            tctx.fillText(a.r, mid+(r+20)*Math.cos(rad)-10, mid+(r+20)*Math.sin(rad));
+        }
+    });
+}
+function clearAll() {
+    if(confirm("Voulez-vous vraiment tout effacer (points, cercles, segments) ?")) {
+        saveState(); // Pour pouvoir faire "Annuler" si besoin
+        points = [];
+        links = [];
+        customCircles = [];
+        polygonLinks = [];
+        polygonVisible = false;
+        selIdx = null;
+        // Effacer également les constructions du laboratoire interactif V7.4.
+        if (typeof v74Clear === 'function') v74Clear();
+        updateUI();
+        draw();
+    }
+}
+// Cette fonction dessine un vecteur avec une flèche au bout
+function dessinerVecteurDirecteur(xMath, yMath, nom, couleur) {
+    // Conversion des coordonnées mathématiques en pixels
+    const cibleX = ox + xMath * scale;
+    const cibleY = oy - yMath * scale;
+
+    ctx.strokeStyle = couleur;
+    ctx.fillStyle = couleur;
+    ctx.lineWidth = 2;
+
+    // Tracé de la ligne (de l'origine vers l'unité)
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(cibleX, cibleY);
+    ctx.stroke();
+
+    // Calcul de l'angle pour la pointe de la flèche
+    const angle = Math.atan2(cibleY - oy, cibleX - ox);
+    const tailleFleche = 10;
+
+    ctx.beginPath();
+    ctx.moveTo(cibleX, cibleY);
+    ctx.lineTo(cibleX - tailleFleche * Math.cos(angle - Math.PI/6), cibleY - tailleFleche * Math.sin(angle - Math.PI/6));
+    ctx.lineTo(cibleX - tailleFleche * Math.cos(angle + Math.PI/6), cibleY - tailleFleche * Math.sin(angle + Math.PI/6));
+    ctx.fill();
+
+    // Affichage du nom (u ou v)
+    ctx.font = "bold 14px Poppins";
+    ctx.fillText(nom, cibleX + 5, cibleY - 5);
+}
+
+function downloadImage() {
+    // Export réel en PDF du plan complexe visible à l'écran.
+    draw();
+    try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            alert("Le module PDF n'est pas disponible. Vérifiez votre connexion Internet puis réessayez.");
+            return;
+        }
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const margin = 10, pageW = pdf.internal.pageSize.getWidth(), pageH = pdf.internal.pageSize.getHeight();
+        const maxW = pageW - 2 * margin, maxH = pageH - 30;
+        const ratio = Math.min(maxW / canvas.width, maxH / canvas.height);
+        const imgW = canvas.width * ratio, imgH = canvas.height * ratio;
+        const x = (pageW - imgW) / 2, y = 20;
+        pdf.setFontSize(16);
+        pdf.text('LABO MAÎTRE V31 - Plan complexe', margin, 12);
+        pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', x, y, imgW, imgH);
+        pdf.setFontSize(9);
+        pdf.text('Export du plan complexe', margin, pageH - 8);
+        pdf.save('mon_plan_complexe.pdf');
+    } catch (e) {
+        console.error(e);
+        alert("Impossible de créer le PDF : " + e.message);
+    }
+}
+</script>
+<div id="modal-trigo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:30000; align-items:center; justify-content:center;">
+    <div class="modal-content-wrapper">
+        <div style="color:black; min-width:300px;">
+            <h2 style="text-align:center; font-family:'Fredoka One'; color:var(--primary);">VALEURS USUELLES</h2>
+            <table id="table-trigo" style="width:100%; border-collapse:collapse; text-align:center;">
+                <thead>
+                    <tr style="background:var(--primary); color:white;">
+                        <th>Deg</th><th>Rad</th><th>Cos θ</th><th>Sin θ</th>
+                    </tr>
+                </thead>
+                <tbody id="trigo-body"></tbody>
+            </table>
+            <button onclick="document.getElementById('modal-trigo').style.display='none'" style="width:100%; margin-top:15px; padding:12px; background:var(--dark); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">FERMER</button>
+        </div>
+        <div style="background:white; display:flex; align-items:center; justify-content:center;">
+            <canvas id="trigoCanvas" width="450" height="450"></canvas>
+        </div>
+    </div>
+</div>
+<div id="modal-aide" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; padding:20px; overflow-y:auto;">
+    <div style="background:white; max-width:800px; margin:auto; padding:25px; border-radius:15px; font-family:'Poppins', sans-serif; line-height: 1.6;">
+        <h2 style="color:var(--primary); border-bottom:3px solid var(--primary); text-align:center;">🧪 GUIDE COMPLET - LABO MAÎTRE V31</h2>
+        
+        <section style="margin-bottom:20px; background:#f9f9f9; padding:15px; border-radius:10px;">
+            <h3 style="margin-top:0;">👤 Auteur & Mission</h3>
+            <p><b>Auteur :</b> [Ton Nom / Équipe]</p>
+            <p><b>Mission :</b> Fournir un environnement interactif pour l'étude approfondie des nombres complexes, de l'algèbre polynomiale et des propriétés géométriques du plan complexe.</p>
+        </section>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <section>
+                <h3 style="color:var(--accent);">🧮 Analyse & Points</h3>
+                <ul style="list-style:none; padding:0; font-size: 0.85rem;">
+                    <li><b>[Z] :</b> Saisie manuelle d'un affixe $z = a + bi$.</li>
+                    <li><b>[Arg] :</b> Visualisation de l'argument $\theta = Arg(z)$.</li>
+                    <li><b>[Mod] :</b> Visualisation du module $|z|$.</li>
+                    <li><b>[Solveur] :</b> Résolution d'équations $P(z)=0$ (degré 1 à 5).</li>
+                    <li><b>[Conj] :</b> Génère automatiquement le conjugué $\bar{z}$.</li>
+                    <li><b>[Opp] :</b> Génère l'opposé $-z$ du point sélectionné.</li>
+                    <li><b>[Inv] :</b> Calcule l'inverse $1/z$ (si $z \neq 0$).</li>
+                    <li><b>[Carré] :</b> Calcule l'élévation au carré $z^2$.</li>
+                    <li><b>[Racine] :</b> Affiche les racines carrées complexes de $z$.</li>
+                    <li><b>[Exp] :</b> Calcule l'exponentielle complexe $e^z$.</li>
+                    <li><b>[Log] :</b> Calcule le logarithme complexe $\ln(z)$.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3 style="color:var(--success);">📐 Géométrie & Vue</h3>
+                <ul style="list-style:none; padding:0; font-size: 0.85rem;">
+                    <li><b>[Segment] :</b> Relie deux points pour créer un vecteur ou côté.</li>
+                    <li><b>[Cercle] :</b> Trace un cercle à partir d'un centre et d'un point.</li>
+                    <li><b>[Moyen] :</b> Calcule l'affixe du milieu d'un segment.</li>
+                    <li><b>[Dist] :</b> Affiche la distance entre deux points sélectionnés.</li>
+                    <li><b>[Angle] :</b> Mesure l'angle formé par trois points.</li>
+                    <li><b>[Rotation] :</b> Applique une rotation autour de l'origine.</li>
+                    <li><b>[Palette] :</b> Change la couleur des prochains éléments.</li>
+                    <li><b>[🔍+] / [🔍-] :</b> Ajuste le zoom du plan complexe.</li>
+                    <li><b>[🏠 Centrer] :</b> Recadre la vue sur l'origine $O(0,0)$.</li>
+                    <li><b>[↩️ Retour] :</b> Annule la dernière action (Historique).</li>
+                    <li><b>[🗑️ Effacer] :</b> Réinitialise complètement le laboratoire.</li>
+                    <li><b>[❓ Aide] :</b> Affiche ce guide utilisateur.</li>
+                </ul>
+            </section>
+        </div>
+
+        <button onclick="fermerAide()" style="width:100%; padding:15px; background:var(--danger); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:800; margin-top:20px; font-size:1rem;">J'AI COMPRIS</button>
+    </div>
+</div>
+
+<style id="v7-enhancements-css">
+#v7-panel{position:fixed;right:18px;top:72px;width:min(390px,calc(100vw - 36px));max-height:78vh;overflow:auto;background:#fff;border:1px solid #dfe6e9;border-radius:14px;box-shadow:0 12px 35px rgba(0,0,0,.22);z-index:26000;padding:14px;display:none;font-family:Poppins,Arial,sans-serif;color:#2d3436}
+#v7-panel h3{margin:0 0 10px;color:#2d3436}#v7-panel h4{margin:14px 0 7px;color:#6c5ce7}.v7-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:7px 0}.v7-card{background:#f7f9fb;border:1px solid #e9eef2;border-radius:10px;padding:9px;margin:8px 0}.v7-btn{border:0;border-radius:8px;padding:8px 10px;font-weight:800;cursor:pointer}.v7-primary{background:#6c5ce7;color:#fff}.v7-ok{background:#00b894;color:#fff}.v7-warn{background:#fdcb6e}.v7-muted{background:#dfe6e9}.v7-error{color:#d63031;font-weight:800}.v7-success{color:#00a884;font-weight:800}.v7-mode{font-weight:900;padding:5px 9px;border-radius:999px;background:#eee;display:inline-block}.v7-layer-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.v7-layer-grid label{background:#f5f6fa;border-radius:8px;padding:7px}.v7-hidden-by-v7{display:none!important}
+.v7-input-error{border:2px solid #d63031!important;background:#fff5f5!important}.v7-input-ok{border-color:#00b894!important}
+</style>
+
+<div id="v7-panel">
+  <div class="v7-row" style="justify-content:space-between"><h3>🚀 LABO MAÎTRE V7</h3><button class="v7-btn v7-muted" onclick="v7TogglePanel(false)">✕</button></div>
+  <div class="v7-card"><span>Mode :</span> <span id="v7-mode-label" class="v7-mode">Professeur</span>
+    <div class="v7-row"><button class="v7-btn v7-primary" onclick="v7SetMode('prof')">👨‍🏫 Professeur</button><button class="v7-btn v7-muted" onclick="v7SetMode('eleve')">👨‍🎓 Élève</button></div>
+  </div>
+  <div class="v7-card">
+    <h4>🧭 Outils du plan</h4>
+    <div class="v7-row"><button class="v7-btn v7-primary" onclick="v7CenterObjects()">🎯 Centrer sur les objets</button><button class="v7-btn v7-muted" onclick="v7FitObjects()">⛶ Ajuster la vue</button></div>
+    <small>Astuce : maintenez <b>Shift ⇧</b> puis faites glisser la souris pour déplacer le plan. Molette = zoom.</small>
+  </div>
+  <div class="v7-card">
+    <h4>🗂️ Calques</h4>
+    <div class="v7-layer-grid">
+      <label><input type="checkbox" id="v7-layer-points" checked onchange="v7Layer('points',this.checked)"> Points</label>
+      <label><input type="checkbox" id="v7-layer-mod" onchange="v7Layer('mod',this.checked)"> Modules</label>
+      <label><input type="checkbox" id="v7-layer-arg" onchange="v7Layer('arg',this.checked)"> Arguments</label>
+      <label><input type="checkbox" id="v7-layer-circle" onchange="v7Layer('cercle',this.checked)"> Cercle racines</label>
+      <label><input type="checkbox" id="v7-layer-poly" checked onchange="v7Layer('polygon',this.checked)"> Polygone</label>
+      <label><input type="checkbox" id="v7-layer-graduations" checked onchange="v7Layer('graduations',this.checked)"> Graduations</label>
+    </div>
+  </div>
+  <div class="v7-card v7-learning-card">
+    <h4>📚 Apprentissage — Propriétés des nombres complexes</h4>
+    <div class="v7-learning-intro">Une bibliothèque interactive : choisissez une propriété, consultez la formule, l'explication et un exemple. Les propriétés des ensembles de points ci-dessous sont celles utilisées par le laboratoire pour traduire une condition complexe en construction géométrique.</div>
+    <div id="v7-property-menu" class="v7-property-menu"></div>
+    <div id="v7-learning" class="v7-learning-content"></div>
+  </div>
+  <div class="v7-card">
+    <h4>🔬 Vérification du solveur</h4>
+    <div id="v7-verification">Aucune résolution vérifiée pour le moment.</div>
+  </div>
+</div>
+
+
+
+<style id="v7-learning-css">
+.v7-learning-intro{font-size:13px;line-height:1.45;margin-bottom:10px;opacity:.9}.v7-property-menu{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.v7-prop-btn{border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:7px 9px;background:#263449;color:#fff;cursor:pointer;font-size:12px;font-weight:700}.v7-prop-btn:hover{filter:brightness(1.15)}.v7-prop-btn.active{background:#00a8a8}.v7-learning-content{background:rgba(0,0,0,.16);border-radius:10px;padding:12px;line-height:1.55;font-size:13px}.v7-learning-content h5{margin:0 0 8px;font-size:16px}.v7-formula{font-size:17px;text-align:center;padding:9px;margin:8px 0;background:rgba(255,255,255,.07);border-radius:8px;font-weight:700}.v7-example{margin-top:9px;padding:9px;border-left:3px solid #00cec9;background:rgba(0,206,201,.08)}.v7-note{margin-top:8px;font-size:12px;opacity:.9}.v7-example b,.v7-learning-content b{color:#7ff9f5}
+</style>
+<script id="v7-enhancements-js">
+(function(){
+  'use strict';
+  let v7Mode='prof', v7Dragging=false, v7LastX=0, v7LastY=0, v7SavedOx=null, v7SavedOy=null;
+  const $=id=>document.getElementById(id);
+  window.v7TogglePanel=function(show){$('v7-panel').style.display=show?'block':'none';};
+  window.v7SetMode=function(mode){
+    v7Mode=mode==='eleve'?'eleve':'prof';
+    $('v7-mode-label').textContent=v7Mode==='eleve'?'Élève':'Professeur';
+    $('v7-learning').style.display=v7Mode==='eleve'?'block':'block';
+    const ver=$('v7-verification'); if(ver) ver.style.display=v7Mode==='prof'?'block':'none';
+  };
+  window.v7Layer=function(layer,on){
+    try{
+      if(layer==='mod'||layer==='arg'||layer==='cercle'){ layers[layer]=!!on; }
+      else if(layer==='polygon'){ polygonVisible=!!on; }
+      else if(layer==='graduations'){ showGraduations=!!on; }
+      else if(layer==='points'){ points.forEach(p=>p.visible=!!on); }
+      draw();
+    }catch(e){console.warn('V7 layer',e);}
+  };
+  window.v7CenterObjects=function(){
+    if(!points.length)return;
+    const vis=points.filter(p=>p.visible!==false); if(!vis.length)return;
+    const cx=vis.reduce((a,p)=>a+p.a,0)/vis.length, cy=vis.reduce((a,p)=>a+p.b,0)/vis.length;
+    ox=canvas.width/2-cx*scale; oy=canvas.height/2+cy*scale; draw();
+  };
+  window.v7FitObjects=function(){
+    const vis=points.filter(p=>p.visible!==false); if(!vis.length){resetView();return;}
+    let minX=Math.min(...vis.map(p=>p.a)), maxX=Math.max(...vis.map(p=>p.a)), minY=Math.min(...vis.map(p=>p.b)), maxY=Math.max(...vis.map(p=>p.b));
+    const span=Math.max(maxX-minX,maxY-minY,1); const pad=1.8; scale=Math.max(10,Math.min(180,Math.min(canvas.width,canvas.height)/(span*pad)));
+    ox=canvas.width/2-((minX+maxX)/2)*scale; oy=canvas.height/2+((minY+maxY)/2)*scale; draw();
+  };
+  const v7Properties=[
+    {id:'conjugue',title:'Conjugué',html:`<h5>1. Conjugué d'un nombre complexe</h5><div>Si <b>z=a+bi</b>, alors son conjugué est :</div><div class="v7-formula">z̄ = a − bi</div><div><b>Propriétés :</b> z+z̄=2a ; z−z̄=2bi ; z·z̄=|z|² ; (zw)̄=z̄w̄.</div><div class="v7-example"><b>Exemple :</b> pour z=3−2i, z̄=3+2i et z·z̄=13.</div>`},
+    {id:'module',title:'Module',html:`<h5>2. Module</h5><div>Pour <b>z=a+bi</b> :</div><div class="v7-formula">|z| = √(a²+b²)</div><div><b>Propriétés :</b> |zw|=|z||w| ; |z/w|=|z|/|w| (w≠0) ; |zⁿ|=|z|ⁿ.</div><div class="v7-example"><b>Exemple :</b> z=3+4i donne |z|=√(9+16)=5.</div>`},
+    {id:'argument',title:'Argument',html:`<h5>3. Argument</h5><div>Si z≠0 et z=r(cosθ+i sinθ), alors θ est un argument de z.</div><div class="v7-formula">arg(zw)=arg(z)+arg(w)  (mod 2π)</div><div>Et arg(zⁿ)=n·arg(z) (mod 2π).</div><div class="v7-example"><b>Exemple :</b> z=1+i a pour module √2 et pour argument π/4.</div>`},
+    {id:'ecritures',title:'Écritures complexes',html:`<h5>4. Les différentes écritures</h5><div><b>Algébrique :</b> z=a+bi</div><div><b>Trigonométrique :</b> z=r(cosθ+i sinθ)</div><div><b>Exponentielle :</b> z=re<sup>iθ</sup></div><div class="v7-example"><b>Exemple :</b> 1+i=√2(cos(π/4)+i sin(π/4))=√2e<sup>iπ/4</sup>.</div>`},
+    {id:'euler',title:'Formules d’Euler',html:`<h5>5. Formules d'Euler</h5><div class="v7-formula">e<sup>iθ</sup> = cosθ + i sinθ</div><div class="v7-formula">e<sup>−iθ</sup> = cosθ − i sinθ</div><div>On en déduit :</div><div class="v7-formula">cosθ=(e<sup>iθ</sup>+e<sup>−iθ</sup>)/2<br>sinθ=(e<sup>iθ</sup>−e<sup>−iθ</sup>)/(2i)</div><div class="v7-example"><b>Exemple :</b> e<sup>iπ/3</sup>=1/2+i√3/2.</div>`},
+    {id:'moivre',title:'Moivre',html:`<h5>6. Formule de Moivre</h5><div class="v7-formula">(cosθ+i sinθ)<sup>n</sup>=cos(nθ)+i sin(nθ)</div><div>Elle permet notamment de calculer rapidement les puissances de nombres complexes sous forme trigonométrique.</div><div class="v7-example"><b>Exemple :</b> (cos(π/6)+i sin(π/6))<sup>3</sup>=cos(π/2)+i sin(π/2)=i.</div>`},
+    {id:'racines',title:'Racines n-ièmes',html:`<h5>7. Racines n-ièmes — cas général</h5><div>Pour résoudre <b>zⁿ=w</b>, avec w=ρe<sup>iθ</sup> et ρ&gt;0 :</div><div class="v7-formula">z<sub>k</sub>=ρ<sup>1/n</sup>e<sup>i(θ+2kπ)/n</sup>, &nbsp;k=0,…,n−1</div><div>Il y a exactement <b>n racines</b> distinctes lorsque w≠0.</div><div class="v7-example"><b>Exemple :</b> z²=4 donne z=2 et z=−2.</div>`},
+    {id:'unite',title:'Racines de l’unité',html:`<h5>8. Racines n-ièmes de l'unité</h5><div>Pour <b>zⁿ=1</b> :</div><div class="v7-formula">z<sub>k</sub>=e<sup>2ikπ/n</sup>, &nbsp;k=0,…,n−1</div><div>Les racines sont régulièrement réparties sur le <b>cercle unité</b> et forment les sommets d'un polygone régulier.</div><div class="v7-example"><b>Exemple :</b> z³=1 donne 1, e<sup>2iπ/3</sup> et e<sup>4iπ/3</sup>.</div>`},
+    {id:'translation',title:'Translation',html:`<h5>9. Translation</h5><div>Si la translation a pour affixe <b>u</b> :</div><div class="v7-formula">z' = z + u</div><div>Elle déplace tous les points du même vecteur.</div><div class="v7-example"><b>Exemple :</b> z=2+i et u=1−2i donnent z'=3−i.</div>`},
+    {id:'symetrie',title:'Symétrie',html:`<h5>10. Symétries</h5><div><b>Par rapport à l'axe réel :</b></div><div class="v7-formula">z' = z̄</div><div><b>Symétrie centrale de centre O :</b></div><div class="v7-formula">z' = −z</div><div class="v7-example"><b>Exemple :</b> z=2+3i devient 2−3i par symétrie par rapport à l'axe réel.</div>`},
+    {id:'rotation',title:'Rotation',html:`<h5>11. Rotation</h5><div>Rotation de centre O et d'angle θ :</div><div class="v7-formula">z' = e<sup>iθ</sup>z</div><div>De centre A d'affixe z<sub>A</sub> :</div><div class="v7-formula">z'−z<sub>A</sub>=e<sup>iθ</sup>(z−z<sub>A</sub>)</div><div class="v7-example"><b>Exemple :</b> une rotation de π/2 autour de O transforme 1 en i.</div>`},
+    {id:'homothetie',title:'Homothétie',html:`<h5>12. Homothétie</h5><div>De centre O et de rapport réel k :</div><div class="v7-formula">z' = kz</div><div>De centre A :</div><div class="v7-formula">z'−z<sub>A</sub>=k(z−z<sub>A</sub>)</div><div class="v7-example"><b>Exemple :</b> avec k=2, le point z=1+i devient z'=2+2i.</div>`},
+    {id:'similitude',title:'Similitude directe',html:`<h5>13. Similitude directe</h5><div>Une similitude directe combine une rotation et une homothétie :</div><div class="v7-formula">z'−z<sub>O</sub>=ke<sup>iθ</sup>(z−z<sub>O</sub>)</div><div class="v7-example"><b>Exemple :</b> k=2 et θ=π/2 donnent, pour z=1, z'=2i.</div>`},
+    {id:'trigo-fondamentale',title:'Trigonométrie : relation fondamentale',html:`<h5>14. Relation fondamentale de la trigonométrie</h5><div>Pour tout angle α :</div><div class="v7-formula">cos²α + sin²α = 1</div><div><b>Conséquences :</b> sin²α=1−cos²α et cos²α=1−sin²α.</div><div class="v7-example"><b>Exemple :</b> si cos α=3/5 et α est aigu, alors sin α=4/5.</div>`},
+    {id:'trigo-pairite',title:'Trigonométrie : angles opposés',html:`<h5>15. Angles opposés</h5><div>Le cosinus est une fonction paire et le sinus une fonction impaire :</div><div class="v7-formula">cos(−α)=cos α &nbsp;&nbsp; ; &nbsp;&nbsp; sin(−α)=−sin α</div><div class="v7-example"><b>Exemple :</b> cos(−π/3)=1/2 et sin(−π/3)=−√3/2.</div>`},
+    {id:'trigo-associes',title:'Trigonométrie : angles associés',html:`<h5>16. Angles associés</h5><div class="v7-formula">cos(π−α)=−cos α &nbsp; ; &nbsp; sin(π−α)=sin α</div><div class="v7-formula">cos(π+α)=−cos α &nbsp; ; &nbsp; sin(π+α)=−sin α</div><div class="v7-formula">cos(2π−α)=cos α &nbsp; ; &nbsp; sin(2π−α)=−sin α</div><div class="v7-formula">cos(π/2−α)=sin α &nbsp; ; &nbsp; sin(π/2−α)=cos α</div><div class="v7-formula">cos(π/2+α)=−sin α &nbsp; ; &nbsp; sin(π/2+α)=cos α</div><div class="v7-example"><b>Exemple :</b> sin(3π/4)=sin(π−π/4)=√2/2 et cos(3π/4)=−√2/2.</div>`},
+    {id:'trigo-addition',title:'Trigonométrie : addition',html:`<h5>17. Formules d'addition</h5><div class="v7-formula">cos(α+β)=cos α cos β − sin α sin β</div><div class="v7-formula">sin(α+β)=sin α cos β + cos α sin β</div><div class="v7-example"><b>Exemple :</b> sin(π/6+π/3)=sin(π/2)=1.</div>`},
+    {id:'trigo-soustraction',title:'Trigonométrie : soustraction',html:`<h5>18. Formules de soustraction</h5><div class="v7-formula">cos(α−β)=cos α cos β + sin α sin β</div><div class="v7-formula">sin(α−β)=sin α cos β − cos α sin β</div><div class="v7-example"><b>Exemple :</b> cos(π/3−π/6)=cos(π/6)=√3/2.</div>`},
+    {id:'trigo-duplication',title:'Trigonométrie : duplication',html:`<h5>19. Formules de duplication (angle double)</h5><div class="v7-formula">cos(2α)=cos²α−sin²α</div><div class="v7-formula">cos(2α)=2cos²α−1=1−2sin²α</div><div class="v7-formula">sin(2α)=2sin α cos α</div><div class="v7-example"><b>Exemple :</b> sin(2π/6)=sin(π/3)=√3/2.</div>`},
+    {id:'trigo-demidouble',title:'Trigonométrie : demi-angle',html:`<h5>20. Formules de demi-angle</h5><div class="v7-formula">cos²α/2=(1+cos α)/2 &nbsp; ; &nbsp; sin²α/2=(1−cos α)/2</div><div class="v7-example"><b>Exemple :</b> elles permettent de retrouver les valeurs exactes de cos(α/2) et sin(α/2), avec le signe déterminé par le quadrant.</div>`},
+    {id:'trigo-fondamental-ratios',title:'Trigonométrie : rapports',html:`<h5>21. Relations entre les rapports</h5><div class="v7-formula">tan α = sin α / cos α &nbsp; (cos α ≠ 0)</div><div class="v7-formula">1+tan²α = 1/cos²α</div><div class="v7-example"><b>Exemple :</b> pour α=π/4, tan α=1.</div>`},
+    {id:'lieu-cercle',title:'Lieu : cercle',html:`<h5>30. Ensemble de points — Cercle</h5><div>Le module d'une différence représente une distance :</div><div class="v7-formula">|z−z<sub>A</sub>|=r</div><div><b>Interprétation :</b> M est à distance r du point fixe A. Le lieu est donc le <b>cercle</b> de centre A et de rayon r.</div><div class="v7-example"><b>Exemple :</b> |z−(2+i)|=3 donne le cercle de centre A(2,1) et de rayon 3.</div><div class="v7-note">🔬 C'est la propriété utilisée par l'outil « Cercle » du laboratoire.</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('circle')">Construire dans le laboratoire</button>`},
+    {id:'lieu-mediatrice',title:'Lieu : médiatrice',html:`<h5>23. Ensemble de points — Médiatrice</h5><div>Si un point M est équidistant de A et B :</div><div class="v7-formula">|z−z<sub>A</sub>|=|z−z<sub>B</sub>|</div><div><b>Interprétation :</b> MA=MB. L'ensemble des points M est la <b>médiatrice</b> du segment [AB].</div><div class="v7-example"><b>Exemple :</b> |z−1|=|z+1| donne Re(z)=0, donc l'axe imaginaire.</div><div class="v7-note">🔬 Cette propriété correspond à l'outil « Médiatrice ».</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('bisector')">Construire dans le laboratoire</button>`},
+    {id:'lieu-apollonius',title:'Lieu : Apollonius',html:`<h5>24. Ensemble de points — Cercle d'Apollonius</h5><div>On impose un rapport constant des distances à deux points fixes :</div><div class="v7-formula">|z−z<sub>A</sub>|=k|z−z<sub>B</sub>|</div><div><b>Interprétation :</b> MA/MB=k. Si k≠1, le lieu est un <b>cercle d'Apollonius</b> ; si k=1, on retrouve la médiatrice de [AB].</div><div class="v7-example"><b>Exemple :</b> |z−1|=2|z+1| décrit un cercle d'Apollonius.</div><div class="v7-note">🔬 Cette propriété est utilisée par l'outil « Apollonius ».</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('apollonius')">Construire dans le laboratoire</button>`},
+    {id:'lieu-arg0',title:'Argument = 0',html:`<h5>25. Ensemble de points — Argument nul</h5><div>La condition</div><div class="v7-formula">arg\left(rac{z−z<sub>A</sub>}{z−z<sub>B</sub>}
+ight)≡0 [2π]</div><div><b>Interprétation :</b> les vecteurs AM et BM ont la même direction. Le lieu est porté par la droite (AB), avec les restrictions de sens correspondantes ; A et B sont exclus.</div><div class="v7-example"><b>Exemple :</b> pour A=0 et B=1, on obtient les points réels situés à l'extérieur du segment [0,1].</div><div class="v7-note">Le cas θ=0 est un cas particulier de la famille des conditions d'argument constant.</div>`},
+    {id:'lieu-argpi',title:'Argument = π',html:`<h5>26. Ensemble de points — Argument plat</h5><div>La condition</div><div class="v7-formula">arg\left(rac{z−z<sub>A</sub>}{z−z<sub>B</sub>}
+ight)≡π [2π]</div><div><b>Interprétation :</b> les vecteurs AM et BM ont des directions opposées. M appartient à la droite (AB), entre A et B, dans le cas usuel.</div><div class="v7-example"><b>Exemple :</b> pour A=0 et B=1, les points réels de ]0,1[ vérifient cette condition.</div><div class="v7-note">Le cas θ=π est lui aussi un cas particulier de l'argument constant.</div>`},
+    {id:'lieu-arg',title:'Argument constant',html:`<h5>27. Ensemble de points — Argument constant</h5><div>Pour deux points fixes A et B :</div><div class="v7-formula">arg\left(rac{z−z<sub>A</sub>}{z−z<sub>B</sub>}
+ight)≡θ [2π]</div><div><b>Interprétation :</b> l'angle orienté entre les vecteurs correspondants est constant. Si θ≠0,π, le lieu est en général un <b>arc de cercle passant par A et B</b>, sans A ni B.</div><div class="v7-example"><b>Exemple :</b> pour θ=π/2, on obtient un arc du cercle passant par A et B ; cette propriété est liée au théorème de l'angle inscrit.</div><div class="v7-note">🔬 C'est la propriété utilisée par l'outil « Arg constant ».</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('angle')">Construire dans le laboratoire</button>`},
+    {id:'lieu-reim',title:'Re(z) et Im(z)',html:`<h5>28. Ensemble de points — Parties réelle et imaginaire</h5><div>Les parties réelle et imaginaire donnent directement des droites :</div><div class="v7-formula">Re(z)=a → x=a &nbsp;&nbsp;&nbsp; Im(z)=b → y=b</div><div><b>Interprétation :</b> Re(z)=a est une droite verticale parallèle à l'axe imaginaire ; Im(z)=b est une droite horizontale parallèle à l'axe réel.</div><div class="v7-example"><b>Exemple :</b> Re(z)=2 donne x=2 et Im(z)=−1 donne y=−1.</div><div class="v7-note">🔬 Ces deux propriétés correspondent aux outils « Re(z)=a » et « Im(z)=b ».</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('vertical')">Construire Re(z)=a</button> <button type="button" class="v7-prop-btn" onclick="v7OpenGeo('horizontal')">Construire Im(z)=b</button>`},
+    {id:'lieu-ellipse',title:'Lieu : ellipse',html:`<h5>29. Ensemble de points — Ellipse</h5><div>La somme des distances à deux points fixes est constante :</div><div class="v7-formula">|z−z<sub>A</sub>|+|z−z<sub>B</sub>|=2a</div><div><b>Interprétation :</b> M est tel que MA+MB=2a. Le lieu est une <b>ellipse</b> de foyers A et B, lorsque 2a&gt;AB.</div><div class="v7-example"><b>Exemple :</b> |z−1|+|z+1|=4 est une ellipse de foyers −1 et 1.</div><div class="v7-note">🔬 Cette propriété est utilisée par l'outil « Ellipse ».</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('ellipse')">Construire dans le laboratoire</button>`},
+    {id:'lieu-hyperbole',title:'Lieu : hyperbole',html:`<h5>30. Ensemble de points — Hyperbole</h5><div>La valeur absolue de la différence des distances à deux foyers est constante :</div><div class="v7-formula">||z−z<sub>A</sub>|−|z−z<sub>B</sub>||=2a</div><div><b>Interprétation :</b> |MA−MB|=2a. Le lieu est une <b>hyperbole</b> de foyers A et B, lorsque 2a&lt;AB.</div><div class="v7-example"><b>Exemple :</b> ||z−1|−|z+1||=1 définit une hyperbole de foyers −1 et 1.</div><div class="v7-note">🔬 Cette propriété est utilisée par l'outil « Hyperbole ».</div><button type="button" class="v7-prop-btn" onclick="v7OpenGeo('hyperbola')">Construire dans le laboratoire</button>`}
+  ];
+  window.v7OpenGeo=function(tool){
+    if(typeof v74Toggle==='function') v74Toggle(true);
+    if(typeof v74SelectTool==='function') v74SelectTool(tool);
+  };
+  function v7RenderProperties(){
+    const menu=$('v7-property-menu'), box=$('v7-learning'); if(!menu||!box)return;
+    menu.innerHTML=v7Properties.map((p,i)=>`<button type="button" class="v7-prop-btn${i===0?' active':''}" data-prop="${p.id}">${p.title}</button>`).join('');
+    menu.querySelectorAll('.v7-prop-btn').forEach(btn=>btn.addEventListener('click',()=>{
+      menu.querySelectorAll('.v7-prop-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+      const p=v7Properties.find(x=>x.id===btn.dataset.prop); if(p)box.innerHTML=p.html;
+    }));
+    box.innerHTML=v7Properties[0].html;
+  }
+  window.v7ShowSteps=function(){ v7RenderProperties(); };
+  window.v7HideSteps=function(){ const box=$('v7-learning'); if(box)box.innerHTML='Sélectionnez une propriété ci-dessus pour afficher la formule, l’explication et un exemple.'; };
+  function v7Fmt(x){ if(Math.abs(x)<1e-10)x=0; return Number(x).toFixed(8).replace(/0+$/,'').replace(/\.$/,'')||'0'; }
+  function v7Angle(t){ if(Math.abs(t)<1e-10)return '0'; const q=t/Math.PI; if(Math.abs(q-Math.round(q))<1e-8)return (Math.round(q)===1?'π':Math.round(q)+'π'); return v7Fmt(q)+'π'; }
+  function v7Complex(a,b){return `${v7Fmt(a)} ${b>=0?'+':'-'} ${v7Fmt(Math.abs(b))}i`;}
+  function v7Validation(ids){
+    let ok=true;
+    ids.forEach(id=>{const el=$(id); if(!el)return; try{const s=String(el.value||'').trim(); if(!s){el.classList.remove('v7-input-error','v7-input-ok');return;} const v=evalExpressionRenforcee(s); if(!Number.isFinite(v))throw 0; el.classList.remove('v7-input-error');el.classList.add('v7-input-ok');}catch(e){el.classList.add('v7-input-error');el.classList.remove('v7-input-ok');ok=false;}});
+    return ok;
+  }
+  function v7ComplexValidation(){
+    const re=$('z-re'), im=$('z-im'); let ok=true;
+    [re,im].forEach(el=>{try{evalExpressionRenforcee(el.value||'0');el.classList.remove('v7-input-error');el.classList.add('v7-input-ok');}catch(e){el.classList.add('v7-input-error');el.classList.remove('v7-input-ok');ok=false;}});
+    return ok;
+  }
+  const originalAddZ=window.addZ, originalCalcRn=window.calcRn, originalSolve=window.solvePolynomeComplexe;
+  window.addZ=function(){ if(!v7ComplexValidation()){alert('Veuillez corriger les expressions Re/Im en rouge.');return;} return originalAddZ.apply(this,arguments); };
+  window.calcRn=function(){
+    if(!v7Validation(['rn-a','rn-b'])){alert('Veuillez corriger les valeurs de a et b en rouge.');return;}
+    const n=parseInt($('rn-n').value); if(!Number.isInteger(n)||n<1||n>50){alert('n doit être un entier compris entre 1 et 50.');return;}
+    const r=originalCalcRn.apply(this,arguments); setTimeout(()=>{ const poly=$('mode-poly'); if(poly) poly.dataset.v7Ready='1'; v7SyncLayers(); },0); return r;
+  };
+  window.solvePolynomeComplexe=function(){
+    const ids=['a5re','a5im','a4re','a4im','a3re','a3im','a2re','a2im','a1re','a1im','a0re','a0im'];
+    if(!v7Validation(ids)){alert('Une ou plusieurs saisies de coefficients sont invalides. Les champs concernés sont signalés en rouge.');return;}
+    const before=points.length; const r=originalSolve.apply(this,arguments); setTimeout(()=>{if(v7Mode==='eleve'&&$('modal-solutions'))$('modal-solutions').style.display='none'; v7VerifierSolveur(before); v7ShowSteps();},30); return r;
+  };
+  function v7VerifierSolveur(before){
+    const coeff=[]; for(let k=5;k>=0;k--){const re=evalMath($('a'+k+'re').value||'0'), im=evalMath($('a'+k+'im').value||'0'); coeff.push({re,im});}
+    while(coeff.length&&Math.hypot(coeff[0].re,coeff[0].im)<1e-12)coeff.shift();
+    if(!coeff.length){$('v7-verification').innerHTML='<span class="v7-error">Aucun polynôme non nul.</span>';return;}
+    const roots=points.slice(before).filter(p=>/^sol\d+$/.test(p.name));
+    const evalP=(z)=>{let pr=0,pi=0; for(const c of coeff){const nr=pr*z.a-pi*z.b+c.re, ni=pr*z.b+pi*z.a+c.im; pr=nr;pi=ni;} return Math.hypot(pr,pi);};
+    const vals=roots.map(r=>evalP(r)); const max=vals.length?Math.max(...vals):NaN;
+    let mult=[]; roots.forEach((r,i)=>{let count=0;roots.forEach(q=>{if(Math.hypot(r.a-q.a,r.b-q.b)<1e-5)count++;}); if(!mult.some(m=>Math.hypot(m.r.a-r.a,m.r.b-r.b)<1e-5))mult.push({r,count});});
+    let html=`<div class="v7-success">✓ ${roots.length} racine(s) trouvée(s)</div><div>Erreur maximale |P(z)| : <b>${Number.isFinite(max)?max.toExponential(3):'—'}</b></div>`;
+    if(mult.some(m=>m.count>1)) html+='<div style="margin-top:7px"><b>Multiplicités détectées :</b><br>'+mult.map(m=>`${v7Complex(m.r.a,m.r.b)} : ×${m.count}`).join('<br>')+'</div>';
+    if(roots.length){
+      html+='<div style="margin-top:7px"><b>Factorisation numérique :</b><br>P(z) ≈ '+roots.map(r=>`(z − (${v7Complex(r.a,r.b)}))`).join(' × ')+'</div>';
+    }
+    $('v7-verification').innerHTML=html;
+  }
+  function v7SyncLayers(){
+    const map=[['v7-layer-mod','mod'],['v7-layer-arg','arg'],['v7-layer-circle','cercle']]; map.forEach(([id,k])=>{if($(id))$(id).checked=!!layers[k];});
+    if($('v7-layer-poly'))$('v7-layer-poly').checked=!!polygonVisible; if($('v7-layer-graduations'))$('v7-layer-graduations').checked=!!showGraduations;
+  }
+  // Déplacement non destructif : maintenez Shift puis faites glisser la souris.
+  canvas.addEventListener('mousedown',e=>{if(e.button===0&&e.shiftKey){v7Dragging=true;v7LastX=e.clientX;v7LastY=e.clientY;e.preventDefault();}});
+  window.addEventListener('mousemove',e=>{if(!v7Dragging)return; ox+=e.clientX-v7LastX;oy+=e.clientY-v7LastY;v7LastX=e.clientX;v7LastY=e.clientY;draw();});
+  window.addEventListener('mouseup',()=>v7Dragging=false);
+  canvas.addEventListener('wheel',e=>{e.preventDefault(); const f=e.deltaY<0?1.12:.89; zoom(f);},{passive:false});
+  // Validation visuelle en temps réel sur toutes les saisies mathématiques principales.
+  document.querySelectorAll('#p-sol input[type=text],#p-z input[type=text],#p-rn input[type=text]').forEach(el=>el.addEventListener('blur',()=>{try{evalExpressionRenforcee(el.value||'0');el.classList.remove('v7-input-error');el.classList.add('v7-input-ok');}catch(e){el.classList.add('v7-input-error');el.classList.remove('v7-input-ok');}}));
+  // Raccourci Ctrl+Shift+L pour le panneau V7.
+  document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='l'){e.preventDefault();v7TogglePanel($('v7-panel').style.display!=='block');}});
+  // Ajoute un bouton V7 sans modifier les boutons historiques.
+  window.addEventListener('DOMContentLoaded',()=>{
+    const top=document.querySelector('.top-bar'); if(top&&!document.getElementById('btn-v7')){const b=document.createElement('button');b.id='btn-v7';b.className='tool-btn';b.style.cssText='background:#00cec9;color:white;font-weight:900';b.textContent='🚀 LABO MAÎTRE V7';b.onclick=()=>v7TogglePanel($('v7-panel').style.display!=='block');top.appendChild(b);}
+    v7RenderProperties();v7SyncLayers();
+  });
+})();
+</script>
+
+
+
+<!-- ================================================================
+     V7.4 — LABORATOIRE INTERACTIF DES GÉOMÉTRIES COMPLEXES
+     Ce bloc est additionnel : le module d'activation historique n'est pas modifié.
+================================================================ -->
+<style id="v74-geometry-css">
+#v74-geo-panel{position:fixed;left:18px;top:72px;width:min(455px,calc(100vw - 36px));max-height:82vh;overflow:auto;background:#fff;border:1px solid #dfe6e9;border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.24);z-index:27000;padding:15px;font-family:Poppins,Arial,sans-serif;color:#2d3436;display:none}
+#v74-geo-panel h3{margin:0;color:#6c5ce7}#v74-geo-panel h4{margin:13px 0 8px;color:#2d3436}
+.v74-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:7px 0}.v74-card{background:#f7f9fb;border:1px solid #e9eef2;border-radius:11px;padding:10px;margin:8px 0}
+.v74-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.v74-grid label{font-size:.78rem;font-weight:800}.v74-grid input,.v74-grid select{width:100%;box-sizing:border-box;padding:8px;border:1px solid #cfd8dc;border-radius:8px;margin-top:3px;background:white}
+.v74-btn{border:0;border-radius:9px;padding:8px 11px;font-weight:800;cursor:pointer}.v74-primary{background:#6c5ce7;color:#fff}.v74-ok{background:#00b894;color:#fff}.v74-danger{background:#d63031;color:#fff}.v74-muted{background:#dfe6e9;color:#2d3436}
+.v74-tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.v74-tool{border:1px solid #dfe6e9;background:#fff;border-radius:10px;padding:9px;text-align:left;cursor:pointer;font-weight:800}.v74-tool.active{outline:2px solid #6c5ce7;background:#f0edff}
+.v74-help{font-size:.76rem;color:#636e72;line-height:1.4}.v74-status{font-size:.82rem;padding:8px;border-radius:8px;background:#eefaf7;color:#007a63}.v74-error{background:#fff1f0;color:#c0392b}.v74-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:.74rem}.v74-chip{padding:4px 7px;border-radius:999px;background:#eee}.v74-object{padding:7px 8px;background:#fff;border:1px solid #e5e9eb;border-radius:8px;margin-top:6px;font-size:.8rem}
+@media(max-width:700px){#v74-geo-panel{left:10px;right:10px;top:60px;width:auto;max-height:80vh}.v74-grid,.v74-tool-grid{grid-template-columns:1fr}}
+</style>
+
+<div id="v74-geo-panel">
+  <div class="v74-row" style="justify-content:space-between"><h3>🔬 Laboratoire de géométries complexes</h3><button class="v74-btn v74-muted" onclick="v74Toggle(false)">✕</button></div>
+  <div class="v74-card">
+    <b>Construire, observer, vérifier</b>
+    <div class="v74-help">Entrez les affixes sous forme algébrique. Vous pouvez utiliser <b>i</b>, <b>π</b>, les fractions et les racines, par exemple : <b>2+i</b>, <b>-1/2</b>, <b>√3/2</b>.</div>
+  </div>
+
+  <div class="v74-card">
+    <h4>📌 Outils de construction</h4>
+    <div class="v74-tool-grid">
+      <button class="v74-tool" data-tool="point" onclick="v74SelectTool('point')">• Point</button>
+      <button class="v74-tool" data-tool="segment" onclick="v74SelectTool('segment')">↔ Segment AB</button>
+      <button class="v74-tool" data-tool="circle" onclick="v74SelectTool('circle')">○ Cercle</button>
+      <button class="v74-tool" data-tool="bisector" onclick="v74SelectTool('bisector')">⊥ Médiatrice</button>
+      <button class="v74-tool" data-tool="apollonius" onclick="v74SelectTool('apollonius')">◉ Apollonius</button>
+      <button class="v74-tool" data-tool="vertical" onclick="v74SelectTool('vertical')">│ Re(z)=a</button>
+      <button class="v74-tool" data-tool="horizontal" onclick="v74SelectTool('horizontal')">— Im(z)=b</button>
+      <button class="v74-tool" data-tool="ellipse" onclick="v74SelectTool('ellipse')">⬭ Ellipse</button>
+      <button class="v74-tool" data-tool="hyperbola" onclick="v74SelectTool('hyperbola')">)( Hyperbole</button>
+      <button class="v74-tool" data-tool="angle" onclick="v74SelectTool('angle')">∠ Arg constant</button>
+    </div>
+  </div>
+
+  <div class="v74-card">
+    <h4>🧮 Paramètres</h4>
+    <div class="v74-grid">
+      <label>A — affixe<input id="v74-a" type="text" value="0" placeholder="ex. 1+i"></label>
+      <label>B — affixe<input id="v74-b" type="text" value="1" placeholder="ex. 2-i"></label>
+      <label>O — centre<input id="v74-o" type="text" value="0" placeholder="ex. -1+i"></label>
+      <label>r — rayon<input id="v74-r" type="text" value="2" placeholder="ex. √3"></label>
+      <label>k — rapport<input id="v74-k" type="text" value="2" placeholder="ex. 1/2"></label>
+      <label>θ — angle<input id="v74-theta" type="text" value="π/3" placeholder="ex. 2π/3 ou 45°"></label>
+      <label>a — Re(z)=a<input id="v74-x" type="text" value="2"></label>
+      <label>b — Im(z)=b<input id="v74-y" type="text" value="-1"></label>
+    </div>
+    <div class="v74-row">
+      <button class="v74-btn v74-primary" onclick="v74BuildSelected()">➕ Construire dans le plan</button>
+      <button class="v74-btn v74-ok" onclick="v74AddAllExamples()">🎓 Exemples</button>
+    </div>
+    <div id="v74-status" class="v74-status">Sélectionnez un outil puis construisez le lieu.</div>
+  </div>
+
+  <div class="v74-card">
+    <h4>👁️ Affichage</h4>
+    <div class="v74-row">
+      <button class="v74-btn v74-muted" onclick="v74Clear()">🗑️ Effacer les constructions</button>
+      <button class="v74-btn v74-primary" onclick="v74Fit()">⛶ Ajuster</button>
+      <label style="font-size:.8rem"><input id="v74-show-labels" type="checkbox" checked onchange="v74Redraw()"> Afficher les labels</label>
+    </div>
+    <div class="v74-legend"><span class="v74-chip">• points</span><span class="v74-chip">↔ segments</span><span class="v74-chip">○ cercles</span><span class="v74-chip">∿ lieux</span></div>
+    <div id="v74-objects"></div>
+  </div>
+
+  <div class="v74-card">
+    <h4>🧠 Lecture géométrique</h4>
+    <div id="v74-explanation" class="v74-help">Le laboratoire traduit automatiquement la condition complexe en objet géométrique.</div>
+  </div>
+</div>
+
+<script id="v74-geometry-js">
+(function(){
+  'use strict';
+  const $v=id=>document.getElementById(id);
+  let v74Objects=[];
+  let v74Selected='circle';
+  let v74ColorIndex=0;
+  const v74Colors=['#6c5ce7','#e17055','#00b894','#0984e3','#e84393','#fdcb6e','#00cec9'];
+
+  function v74Num(expr){
+    if(typeof evalExpressionRenforcee==='function') return evalExpressionRenforcee(expr);
+    return Function('"use strict";return ('+String(expr).replace(/π/g,'Math.PI').replace(/√/g,'Math.sqrt')+');')();
+  }
+  function v74Complex(expr){
+    if(typeof parseComplexTransformation==='function') return parseComplexTransformation(expr);
+    let s=String(expr||'').replace(/\s+/g,'').replace(/π/g,'Math.PI');
+    if(!s.includes('i')) return {re:v74Num(s),im:0};
+    let t=s.slice(0,-1), split=-1;
+    for(let i=t.length-1;i>0;i--){if((t[i]=='+'||t[i]=='-')&&t[i-1]!=='e'){split=i;break;}}
+    if(split>0) return {re:v74Num(t.slice(0,split)),im:v74Num(t.slice(split))};
+    return {re:0,im:v74Num(t||'1')};
+  }
+  function v74Angle(expr){
+    if(typeof parseAngleTransformation==='function') return parseAngleTransformation(expr);
+    let s=String(expr||'').trim().replace(/,/g,'.').replace(/π/gi,'Math.PI').replace(/pi/gi,'Math.PI').replace(/(\d|\))(?=Math\.PI)/g,'$1*');
+    if(s.endsWith('°')) return parseFloat(s.slice(0,-1))*Math.PI/180;
+    return Function('"use strict";return ('+s+');')();
+  }
+  function v74Fmt(x){if(Math.abs(x)<1e-9)x=0;return Number(x).toFixed(3).replace(/0+$/,'').replace(/\.$/,'')||'0';}
+  function v74Z(z){return `${v74Fmt(z.re)} ${z.im>=0?'+':'-'} ${v74Fmt(Math.abs(z.im))}i`;}
+  function v74Canvas(z){return {x:ox+z.re*scale,y:oy-z.im*scale};}
+  function v74MathFromCanvas(x,y){return {re:(x-ox)/scale,im:(oy-y)/scale};}
+  function v74SetStatus(msg,error){const e=$v('v74-status');if(!e)return;e.textContent=msg;e.className='v74-status'+(error?' v74-error':'');}
+  function v74SelectTool(tool){
+    v74Selected=tool;
+    document.querySelectorAll('.v74-tool').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));
+    const names={point:'Point A',segment:'Segment [AB]',circle:'Cercle de centre O et de rayon r',bisector:'Médiatrice de [AB]',apollonius:'Cercle d’Apollonius',vertical:'Droite Re(z)=a',horizontal:'Droite Im(z)=b',ellipse:'Ellipse de foyers A et B',hyperbola:'Hyperbole de foyers A et B',angle:'Lieu d’argument constant'};
+    v74SetStatus('Outil sélectionné : '+names[tool]);
+    const exp={point:'Construction d’un point d’affixe A.',segment:'Le segment relie les affixes A et B.',circle:'|z−zO|=r.',bisector:'|z−zA|=|z−zB|.',apollonius:'|z−zA|=k|z−zB|.',vertical:'Re(z)=a.',horizontal:'Im(z)=b.',ellipse:'|z−zA|+|z−zB|=2a, avec 2a>AB.',hyperbola:'||z−zA|−|z−zB||=2a, avec 2a<AB.',angle:'arg((z−zA)/(z−zB))≡θ [2π].'};
+    $v('v74-explanation').textContent=exp[tool]||'';
+    if(tool==='apollonius') $v('v74-explanation').textContent+='  Attention : si k<0, l\'ensemble est vide ; si k=0, le lieu est réduit au point A.';
+  }
+
+  function v74BuildSelected(){
+    try{
+      let o={type:v74Selected,color:v74Colors[v74ColorIndex++%v74Colors.length]};
+      if(v74Selected==='point'){o.A=v74Complex($v('v74-a').value);o.name='A';}
+      else if(v74Selected==='segment'){o.A=v74Complex($v('v74-a').value);o.B=v74Complex($v('v74-b').value);}
+      else if(v74Selected==='circle'){o.O=v74Complex($v('v74-o').value);o.r=Math.abs(v74Num($v('v74-r').value));if(!(o.r>0))throw Error('Le rayon doit être strictement positif.');}
+      else if(v74Selected==='bisector'){o.A=v74Complex($v('v74-a').value);o.B=v74Complex($v('v74-b').value);if(Math.hypot(o.A.re-o.B.re,o.A.im-o.B.im)<1e-10)throw Error('A et B doivent être distincts.');}
+      else if(v74Selected==='apollonius'){
+        o.A=v74Complex($v('v74-a').value);
+        o.B=v74Complex($v('v74-b').value);
+        o.k=v74Num($v('v74-k').value);
+        if(!Number.isFinite(o.k)) throw Error('Le rapport k doit être un nombre réel.');
+        if(Math.hypot(o.A.re-o.B.re,o.A.im-o.B.im)<1e-10) throw Error('A et B doivent être distincts.');
+        // Pour k<0 : |MA|=k|MB| est impossible puisque les deux membres
+        // sont respectivement >=0 et <=0. Le lieu est donc vide.
+        if(o.k<0){
+          v74SetStatus('∅ Ensemble vide : k < 0, car |MA| ≥ 0 tandis que k|MB| ≤ 0. Aucun cercle n’est construit.', true);
+          return;
+        }
+        // Pour k=0 : |MA|=0, donc M=A (ensemble réduit à un point).
+        if(Math.abs(o.k)<1e-12){
+          o.k=0;
+          o.pointCase=true;
+        }
+      }
+      else if(v74Selected==='vertical'){o.a=v74Num($v('v74-x').value);}
+      else if(v74Selected==='horizontal'){o.b=v74Num($v('v74-y').value);}
+      else if(v74Selected==='ellipse'||v74Selected==='hyperbola'){o.A=v74Complex($v('v74-a').value);o.B=v74Complex($v('v74-b').value);o.a=Math.abs(v74Num($v('v74-r').value));if(!(o.a>0))throw Error('Le paramètre a doit être positif.');let d=Math.hypot(o.A.re-o.B.re,o.A.im-o.B.im);if(v74Selected==='ellipse'&&2*o.a<=d)throw Error('Pour une ellipse réelle, il faut 2a > AB.');if(v74Selected==='hyperbola'&&2*o.a>=d)throw Error('Pour une hyperbole réelle, il faut 2a < AB.');}
+      else if(v74Selected==='angle'){o.A=v74Complex($v('v74-a').value);o.B=v74Complex($v('v74-b').value);o.theta=v74Angle($v('v74-theta').value);if(Math.hypot(o.A.re-o.B.re,o.A.im-o.B.im)<1e-10)throw Error('A et B doivent être distincts.');if(Math.abs(Math.sin(o.theta))<1e-8)throw Error('Pour θ=0 ou π, utilisez plutôt la médiatrice/droite.');}
+      v74Objects.push(o);v74Redraw();v74SetStatus('✓ Construction ajoutée au laboratoire.');
+    }catch(e){v74SetStatus('Erreur : '+e.message,true);}
+  }
+
+  function v74DrawLine(p,q,color,dash){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.setLineDash(dash||[]);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();ctx.restore();}
+  function v74DrawPoint(z,label,color){const p=v74Canvas(z);ctx.save();ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();if($v('v74-show-labels')?.checked){ctx.fillStyle='#2d3436';ctx.font='bold 12px Arial';ctx.fillText(label,p.x+7,p.y-7);}ctx.restore();}
+  function v74DrawCircle(z,r,color){const p=v74Canvas(z);ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(p.x,p.y,r*scale,0,Math.PI*2);ctx.stroke();ctx.restore();}
+  function v74DrawInfiniteLine(base,dx,dy,color,dash){const L=Math.max(canvas.width,canvas.height)*2;const n=Math.hypot(dx,dy)||1;const ux=dx/n,uy=dy/n;const p1=v74Canvas({re:base.re-ux*L/scale,im:base.im-uy*L/scale});const p2=v74Canvas({re:base.re+ux*L/scale,im:base.im+uy*L/scale});v74DrawLine(p1,p2,color,dash);}
+  function v74DrawEllipse(o){
+    const A=o.A,B=o.B,dx=B.re-A.re,dy=B.im-A.im,d=Math.hypot(dx,dy);if(d<1e-10)return;const c={re:(A.re+B.re)/2,im:(A.im+B.im)/2};const aa=o.a,bb=Math.sqrt(Math.max(0,aa*aa-d*d/4));const ang=Math.atan2(dy,dx);ctx.save();ctx.translate(ox+c.re*scale,oy-c.im*scale);ctx.rotate(-ang);ctx.scale(scale,scale);ctx.strokeStyle=o.color;ctx.lineWidth=2/scale;ctx.beginPath();ctx.ellipse(0,0,aa,bb,0,0,2*Math.PI);ctx.stroke();ctx.restore();
+  }
+  function v74DrawHyperbola(o){
+    const A=o.A,B=o.B,dx=B.re-A.re,dy=B.im-A.im,d=Math.hypot(dx,dy);if(d<1e-10)return;const c={re:(A.re+B.re)/2,im:(A.im+B.im)/2};const aa=o.a,bb=Math.sqrt(Math.max(0,d*d/4-aa*aa));const ang=Math.atan2(dy,dx);ctx.save();ctx.translate(ox+c.re*scale,oy-c.im*scale);ctx.rotate(-ang);ctx.scale(scale,scale);ctx.strokeStyle=o.color;ctx.lineWidth=2/scale;for(const sgn of [-1,1]){ctx.beginPath();for(let t=-2.8;t<=2.8;t+=0.025){const x=sgn*aa*Math.cosh(t),y=bb*Math.sinh(t);if(t===-2.8)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}ctx.restore();
+  }
+  function v74DrawAngle(o){
+    const A=o.A,B=o.B,dx=B.re-A.re,dy=B.im-A.im,d=Math.hypot(dx,dy),th=o.theta;if(d<1e-10)return;const mid={re:(A.re+B.re)/2,im:(A.im+B.im)/2};const nx=-dy/d,ny=dx/d;const off=d/(2*Math.tan(th));const center={re:mid.re-nx*off,im:mid.im-ny*off};const R=Math.abs(d/(2*Math.sin(th)));
+    ctx.save();ctx.strokeStyle=o.color;ctx.lineWidth=2.5;ctx.beginPath();let started=false,last=null;for(let j=0;j<=720;j++){const t=2*Math.PI*j/720;const z={re:center.re+R*Math.cos(t),im:center.im+R*Math.sin(t)};const ratioRe=((z.re-A.re)*(z.re-B.re)+(z.im-A.im)*(z.im-B.im));const ratioIm=((z.im-A.im)*(z.re-B.re)-(z.re-A.re)*(z.im-B.im));let a=Math.atan2(ratioIm,ratioRe);let diff=Math.atan2(Math.sin(a-th),Math.cos(a-th));const good=Math.abs(diff)<0.045;if(good){const p=v74Canvas(z);if(!started){ctx.moveTo(p.x,p.y);started=true;}else if(last)ctx.lineTo(p.x,p.y);last=p;}else{started=false;last=null;}}ctx.stroke();ctx.restore();
+  }
+  function v74DrawObject(o){
+    if(o.type==='point'){v74DrawPoint(o.A,'A',o.color);return;}
+    if(o.type==='segment'){v74DrawLine(v74Canvas(o.A),v74Canvas(o.B),o.color);v74DrawPoint(o.A,'A',o.color);v74DrawPoint(o.B,'B',o.color);return;}
+    if(o.type==='circle'){v74DrawCircle(o.O,o.r,o.color);v74DrawPoint(o.O,'O',o.color);return;}
+    if(o.type==='bisector'){const dx=o.B.re-o.A.re,dy=o.B.im-o.A.im,mid={re:(o.A.re+o.B.re)/2,im:(o.A.im+o.B.im)/2};v74DrawInfiniteLine(mid,-dy,dx,o.color,[8,5]);v74DrawPoint(o.A,'A',o.color);v74DrawPoint(o.B,'B',o.color);return;}
+    if(o.type==='apollonius'){
+      if(o.empty) return;
+      if(o.pointCase){v74DrawPoint(o.A,'A',o.color);return;}
+      if(Math.abs(o.k-1)<1e-8){const dx=o.B.re-o.A.re,dy=o.B.im-o.A.im,mid={re:(o.A.re+o.B.re)/2,im:(o.A.im+o.B.im)/2};v74DrawInfiniteLine(mid,-dy,dx,o.color,[8,5]);}
+      else{const k2=o.k*o.k,den=1-k2;const c={re:(o.A.re-k2*o.B.re)/den,im:(o.A.im-k2*o.B.im)/den};const r=Math.abs(o.k*Math.hypot(o.A.re-o.B.re,o.A.im-o.B.im)/Math.abs(den));v74DrawCircle(c,r,o.color);v74DrawPoint(c,'C',o.color);}
+      v74DrawPoint(o.A,'A',o.color);v74DrawPoint(o.B,'B',o.color);return;}
+    if(o.type==='vertical'){v74DrawInfiniteLine({re:o.a,im:0},0,1,o.color,[7,4]);return;}
+    if(o.type==='horizontal'){v74DrawInfiniteLine({re:0,im:o.b},1,0,o.color,[7,4]);return;}
+    if(o.type==='ellipse'){v74DrawEllipse(o);v74DrawPoint(o.A,'A',o.color);v74DrawPoint(o.B,'B',o.color);return;}
+    if(o.type==='hyperbola'){v74DrawHyperbola(o);v74DrawPoint(o.A,'A',o.color);v74DrawPoint(o.B,'B',o.color);return;}
+    if(o.type==='angle'){v74DrawAngle(o);v74DrawPoint(o.A,'A',o.color);v74DrawPoint(o.B,'B',o.color);return;}
+  }
+  function v74Redraw(){if(typeof draw==='function')draw();}
+  function v74Overlay(){v74Objects.forEach(v74DrawObject);}
+  const v74OriginalDraw=window.draw;
+  if(typeof v74OriginalDraw==='function'){
+    window.draw=function(){v74OriginalDraw.apply(this,arguments);v74Overlay();};
+  }
+  window.v74Toggle=function(show){const p=$v('v74-geo-panel');if(p)p.style.display=(show===undefined?(p.style.display!=='block'):show)?'block':'none';if(show)v74Redraw();};
+  window.v74SelectTool=v74SelectTool;window.v74BuildSelected=v74BuildSelected;window.v74Redraw=v74Redraw;
+  window.v74Clear=function(){v74Objects=[];v74ColorIndex=0;v74Redraw();$v('v74-objects').innerHTML='';v74SetStatus('Constructions effacées.');};
+  window.v74Fit=function(){
+    if(!v74Objects.length){if(typeof resetView==='function')resetView();return;}
+    const zs=[];v74Objects.forEach(o=>{['A','B','O'].forEach(k=>{if(o[k])zs.push(o[k]);});if(o.type==='vertical')zs.push({re:o.a,im:0});if(o.type==='horizontal')zs.push({re:0,im:o.b});});
+    if(!zs.length){if(typeof resetView==='function')resetView();return;}const minX=Math.min(...zs.map(z=>z.re)),maxX=Math.max(...zs.map(z=>z.re)),minY=Math.min(...zs.map(z=>z.im)),maxY=Math.max(...zs.map(z=>z.im));const span=Math.max(maxX-minX,maxY-minY,2);scale=Math.max(20,Math.min(110,Math.min(canvas.width,canvas.height)/(span+2)));ox=canvas.width/2-((minX+maxX)/2)*scale;oy=canvas.height/2+((minY+maxY)/2)*scale;v74Redraw();
+  };
+  window.v74AddAllExamples=function(){
+    v74Objects=[];v74ColorIndex=0;
+    v74Objects.push({type:'point',A:{re:2,im:1},name:'A',color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'segment',A:{re:-3,im:-1},B:{re:2,im:2},color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'circle',O:{re:0,im:0},r:2,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'bisector',A:{re:-2,im:0},B:{re:2,im:0},color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'apollonius',A:{re:-1,im:0},B:{re:1,im:0},k:2,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'vertical',a:3,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'horizontal',b:-2,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'ellipse',A:{re:-2,im:0},B:{re:2,im:0},a:3,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'hyperbola',A:{re:-3,im:0},B:{re:3,im:0},a:1.5,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Objects.push({type:'angle',A:{re:0,im:0},B:{re:2,im:0},theta:Math.PI/3,color:v74Colors[v74ColorIndex++%v74Colors.length]});
+    v74Redraw();v74RenderObjects();v74SetStatus('✓ Série d’exemples construite.');
+  };
+  function v74RenderObjects(){const box=$v('v74-objects');if(!box)return;if(!v74Objects.length){box.innerHTML='<div class="v74-help">Aucune construction pour le moment.</div>';return;}const labels={point:'Point',segment:'Segment',circle:'Cercle',bisector:'Médiatrice',apollonius:'Apollonius',vertical:'Droite verticale',horizontal:'Droite horizontale',ellipse:'Ellipse',hyperbola:'Hyperbole',angle:'Argument constant'};box.innerHTML=v74Objects.map((o,i)=>{let extra='';if(o.type==='apollonius'&&o.empty)extra=' — ∅ (k < 0)';if(o.type==='apollonius'&&o.pointCase)extra=' — {A} (k = 0)';return `<div class="v74-object"><b>${i+1}. ${labels[o.type]}${extra}</b> <button style="float:right;border:0;background:none;cursor:pointer" onclick="v74Remove(${i})">✕</button></div>`;}).join('');}
+  window.v74Remove=function(i){v74Objects.splice(i,1);v74RenderObjects();v74Redraw();};
+  const oldOverlay=v74Overlay;
+  const oldRedraw=v74Redraw;
+  // Met à jour la liste après chaque construction.
+  const oldBuild=v74BuildSelected;
+  window.v74BuildSelected=function(){oldBuild();v74RenderObjects();};
+  window.v74AddAllExamples=v74AddAllExamples;
+  window.addEventListener('DOMContentLoaded',()=>{
+    v74SelectTool('circle');v74RenderObjects();
+    const top=document.querySelector('.top-bar');if(top&&!document.getElementById('btn-v74-geo')){const b=document.createElement('button');b.id='btn-v74-geo';b.className='tool-btn';b.style.cssText='background:#6c5ce7;color:white;font-weight:900';b.textContent='🔬 Géométries complexes';b.onclick=()=>v74Toggle();top.appendChild(b);}
+  });
+  // Raccourci Ctrl+Shift+G.
+  document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='g'){e.preventDefault();v74Toggle();}});
+})();
+</script>
+
+</body>
+</html>
