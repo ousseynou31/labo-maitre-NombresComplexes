@@ -145,6 +145,34 @@
 @media (max-width: 900px) {
     #modal-solutions { width: min(460px, calc(100vw - 24px)); right: 12px; top: 75px; }
 }
+
+/* Correctif responsive : la fenêtre d’activation reste entièrement accessible */
+#verrou-ecran {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: 12px 0 !important;
+  box-sizing: border-box !important;
+  -webkit-overflow-scrolling: touch;
+}
+#verrou-ecran .boite-auth {
+  width: min(460px, calc(100% - 24px)) !important;
+  max-height: calc(100vh - 24px) !important;
+  max-height: calc(100dvh - 24px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  flex: 0 0 auto !important;
+  margin: auto !important;
+  padding: 18px !important;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 480px) {
+  #verrou-ecran .boite-auth { padding: 14px !important; border-radius: 14px !important; }
+  #verrou-ecran .boite-auth h1 { font-size: 2rem !important; }
+  #verrou-ecran .boite-auth h2 { font-size: 1.25rem !important; }
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
