@@ -207,7 +207,7 @@
     <label for="pass-input" style="display:block;text-align:left;font-size:.82rem;margin:10px 0 5px;">Code PIN reçu après validation</label>
     <input type="password" id="pass-input" inputmode="numeric" autocomplete="one-time-code" style="box-sizing:border-box;width:100%;padding:14px;border-radius:10px;border:1px solid #444;background:#222;color:white;margin-bottom:12px;text-align:center;font-size:1.1rem;" placeholder="Code d’activation">
     <button onclick="tenterActivation()" style="width:100%;padding:14px;background:var(--success);color:white;border:0;border-radius:10px;font-weight:800;cursor:pointer;">VÉRIFIER LE PAIEMENT ET ACTIVER</button>
-    <p id="labo-auth-status" role="status" style="font-size:.8rem;line-height:1.45;color:#ddd;margin:12px 0 0;">L’application reste verrouillée jusqu’à la validation du paiement et de la licence.</p>
+    <p id="labo-auth-status" role="status" style="font-size:.8rem;line-height:1.45;color:#ddd;margin:12px 0 0;">Après création du compte, copiez l’identifiant de votre appareil et envoyez-le au développeur. Le code d’activation vous sera transmis après confirmation de votre paiement.</p>
     <p style="font-size:.72rem;color:#aaa;margin-top:14px;">Assistance : 76 015 33 89</p>
   </div>
 </div>
@@ -449,7 +449,7 @@ async function enregistrerProfilLabo(user, nom, tel) {
     dernier_token: 'init_' + Math.random().toString(36).slice(2, 11)
   });
   localStorage.setItem('labo_maitre_tel', tel);
-  laboStatus('Profil enregistré. Envoyez votre ID appareil au développeur. Après validation du paiement, il vous transmettra votre code d’activation.');
+  laboStatus('Votre compte et votre profil sont créés. Copiez l’identifiant de votre appareil ci-dessous et envoyez-le au développeur. Après confirmation du paiement, il vous transmettra votre code d’activation.');
 }
 async function creerCompteEtInscrireLabo() {
   const btn = document.getElementById('labo-inscrire'); if (btn) btn.disabled = true;
@@ -460,7 +460,7 @@ async function creerCompteEtInscrireLabo() {
   } catch (e) {
     console.error('Création de compte LABO MAÎTRE', e);
     const messages = {
-      'auth/email-already-in-use': 'Cette adresse e-mail possède déjà un compte. Utilisez « Me connecter ».',
+      'auth/email-already-in-use': 'Ce compte existe déjà. Votre identifiant d’appareil est affiché ci-dessous : copiez-le et envoyez-le au développeur. Après confirmation du paiement, il vous transmettra votre code d’activation. Pour activer votre compte, utilisez ensuite « J’AI DÉJÀ UN COMPTE : ME CONNECTER » avec votre e-mail et votre mot de passe.',
       'auth/invalid-email': 'Adresse e-mail invalide.',
       'auth/weak-password': 'Mot de passe trop faible : utilisez au moins 6 caractères.',
       'auth/operation-not-allowed': 'La méthode e-mail/mot de passe doit être activée dans Firebase Authentication.',
