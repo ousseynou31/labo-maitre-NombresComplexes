@@ -438,7 +438,7 @@ async function enregistrerProfilLabo(user, nom, tel) {
     if (data.uid !== user.uid) throw new Error('Ce numéro est déjà associé à un autre compte. Contactez le développeur.');
     if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu') throw new Error('Accès suspendu. Contactez le développeur.');
     localStorage.setItem('labo_maitre_tel', tel);
-    laboStatus(data.statut_paiement === 'VALIDE' ? 'Profil retrouvé. Saisissez votre code PIN pour vérifier votre licence.' : 'Compte connecté. Le paiement reste en attente de validation par le développeur.');
+    laboStatus('Profil retrouvé. Saisissez le code d’activation reçu du développeur.');
     return;
   }
   const now = new Date().toISOString();
@@ -449,7 +449,7 @@ async function enregistrerProfilLabo(user, nom, tel) {
     dernier_token: 'init_' + Math.random().toString(36).slice(2, 11)
   });
   localStorage.setItem('labo_maitre_tel', tel);
-  laboStatus('Profil enregistré. Paiement en attente : envoyez votre ID appareil au développeur après paiement.');
+  laboStatus('Profil enregistré. Envoyez votre ID appareil au développeur. Après validation du paiement, il vous transmettra votre code d’activation.');
 }
 async function creerCompteEtInscrireLabo() {
   const btn = document.getElementById('labo-inscrire'); if (btn) btn.disabled = true;
@@ -495,7 +495,7 @@ async function tenterActivation() {
   if (!tel) return laboStatus('Enregistrez d’abord votre profil avec votre numéro de téléphone.', true);
   if (!pin) return laboStatus('Saisissez le code PIN reçu.', true);
   if (!laboDatabase || !laboAuth || !laboAuth.currentUser) return laboStatus('Connectez-vous avec votre compte e-mail avant de vérifier la licence.', true);
-  laboStatus('Vérification du paiement et de la licence…');
+  laboStatus('Vérification du code d’activation…');
   try {
     const snap = await laboRef(tel).once('value');
     if (!snap.exists()) return laboStatus('Profil introuvable. Enregistrez d’abord votre profil.', true);
@@ -504,10 +504,6 @@ async function tenterActivation() {
     if (data.etat_acces === 'banni' || data.etat_acces === 'suspendu' || data.statut === 'suspendu' || data.acces === 'suspendu') {
       localStorage.removeItem('geoActive_V31');
       return laboStatus('Accès suspendu ou banni par l’administration.', true);
-    }
-    if (data.statut_paiement !== 'VALIDE') {
-      localStorage.removeItem('geoActive_V31');
-      return laboStatus('Paiement non validé. L’accès reste fermé jusqu’à confirmation du développeur.', true);
     }
     const device = getDeviceIdLabo();
     if (data.device_id && data.device_id !== device) {
@@ -522,7 +518,7 @@ async function tenterActivation() {
     localStorage.setItem('geoActive_V31', 'true');
     document.getElementById('verrou-ecran').style.display = 'none';
     document.getElementById('app-interface').style.display = 'flex';
-    laboStatus('Licence validée.');
+    laboStatus('Code d’activation accepté. Accès autorisé.');
     if (typeof resize === 'function') setTimeout(() => resize(), 50);
     surveillerLicenceLabo();
   } catch (e) {
@@ -547,7 +543,7 @@ async function verifierLicenceLaboAuDemarrage() {
     const data = snap.val() || {};
     const device = getDeviceIdLabo();
     const token = localStorage.getItem('labo_maitre_session_token');
-    if (!snap.exists() || data.statut_paiement !== 'VALIDE' || ['banni','suspendu'].includes(data.etat_acces) || data.statut === 'suspendu' || data.acces === 'suspendu' || (data.device_id && data.device_id !== device) || (data.dernier_token && token && data.dernier_token !== token)) {
+    if (!snap.exists() || ['banni','suspendu'].includes(data.etat_acces) || data.statut === 'suspendu' || data.acces === 'suspendu' || (data.device_id && data.device_id !== device) || (data.dernier_token && token && data.dernier_token !== token)) {
       localStorage.removeItem('geoActive_V31');
       localStorage.removeItem('labo_maitre_session_token');
       return laboStatus('Licence non valide, suspendue ou ouverte sur un autre appareil. Veuillez vous reconnecter.', true);
@@ -566,12 +562,12 @@ function surveillerLicenceLabo() {
   if (!tel || !laboDatabase) return;
   laboDatabase.ref(`labo_maitre_clients/${tel}/infos_client`).on('value', snap => {
     const data = snap.val() || {};
-    if (!snap.exists() || data.statut_paiement !== 'VALIDE' || ['banni','suspendu'].includes(data.etat_acces) || data.statut === 'suspendu' || data.acces === 'suspendu') {
+    if (!snap.exists() || ['banni','suspendu'].includes(data.etat_acces) || data.statut === 'suspendu' || data.acces === 'suspendu') {
       localStorage.removeItem('geoActive_V31');
       localStorage.removeItem('labo_maitre_session_token');
       const verrou = document.getElementById('verrou-ecran'); if (verrou) verrou.style.display = 'flex';
       const app = document.getElementById('app-interface'); if (app) app.style.display = 'none';
-      laboStatus('Votre accès a été suspendu ou votre paiement n’est plus valide.', true);
+      laboStatus('Votre accès a été suspendu ou désactivé par le développeur.', true);
     }
   });
   laboDatabase.ref(`labo_maitre_clients/${tel}/infos_client/dernier_token`).on('value', snap => {
