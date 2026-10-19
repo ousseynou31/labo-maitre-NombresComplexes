@@ -364,13 +364,34 @@ const LABO_APP_KEY = "labo_maitre";
 const LABO_SECRET_KEY = 7391; // compatibilité avec le générateur existant; ne constitue pas une sécurité serveur
 let laboDatabase = null;
 let laboAuth = null;
+let laboFirebaseApp = null;
+
+// Utiliser une application Firebase NOMMÉE pour isoler LABO MAÎTRE
+// de toute autre application Firebase éventuellement chargée sur la page.
+const LABO_FIREBASE_APP_NAME = 'labo-maitre-nombres-complexes';
+
 try {
-  if (window.firebase && !firebase.apps.length) firebase.initializeApp(firebaseConfigLabo);
   if (window.firebase) {
-    laboDatabase = firebase.database();
-    laboAuth = firebase.auth();
+    // Réutiliser uniquement l'instance de LABO MAÎTRE si elle existe déjà.
+    laboFirebaseApp = firebase.apps.find(app => app.name === LABO_FIREBASE_APP_NAME);
+
+    // Ne pas dépendre de l'application Firebase par défaut : elle peut
+    // appartenir à une autre application, par exemple MATHS 5ème.
+    if (!laboFirebaseApp) {
+      laboFirebaseApp = firebase.initializeApp(firebaseConfigLabo, LABO_FIREBASE_APP_NAME);
+    }
+
+    // Authentification et base de données attachées explicitement à cette instance.
+    laboDatabase = laboFirebaseApp.database();
+    laboAuth = laboFirebaseApp.auth();
+
+    console.info('[LABO MAÎTRE] Projet Firebase actif :', laboFirebaseApp.options.projectId);
+  } else {
+    console.error('[LABO MAÎTRE] Le SDK Firebase n’est pas chargé.');
   }
-} catch (e) { console.error('Initialisation Firebase impossible', e); }
+} catch (e) {
+  console.error('Initialisation Firebase impossible pour LABO MAÎTRE', e);
+}
 
 function getDeviceIdLabo() {
   let id = localStorage.getItem('labo_maitre_device_id');
